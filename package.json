@@ -1,7 +1,7 @@
 {
   "name": "BeneGToolkit",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "build": "node build/inject-version.js && node build/build.js && node build/hash-files.js",
     "manifest": "node build/make-manifest.js",

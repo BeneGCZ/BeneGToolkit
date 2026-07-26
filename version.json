@@ -1,6 +1,6 @@
 ﻿{
-  "version": "1.0.0",
+  "version": "1.0.1",
   "schema": 2,
-  "minimum": "1.0.0",
+  "minimum": "1.0.1",
   "host": { "aeMin": "16.0", "aeMax": "99.9", "cepMin": "9.0" }
 }

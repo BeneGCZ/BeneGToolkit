@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest Version="7.0" ExtensionBundleId="com.beneg.toolkit"
-    ExtensionBundleVersion="1.0.0" ExtensionBundleName="BeneG Toolkit"
+    ExtensionBundleVersion="1.0.1" ExtensionBundleName="BeneG Toolkit"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <ExtensionList>
-        <Extension Id="com.beneg.toolkit.panel2" Version="1.0.0" />
+        <Extension Id="com.beneg.toolkit.panel2" Version="1.0.1" />
     </ExtensionList>
     <ExecutionEnvironment>
         <HostList>
