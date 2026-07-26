@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.beneg.toolkit"
+    ExtensionBundleVersion="1.0.0" ExtensionBundleName="BeneG Toolkit"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ExtensionList>
+        <Extension Id="com.beneg.toolkit.panel2" Version="1.0.0" />
+    </ExtensionList>
+    <ExecutionEnvironment>
+        <HostList>
+            <!-- AEFT = After Effects. Rozsah verzi pokryva CC 2019 az po nejnovejsi -->
+            <Host Name="AEFT" Version="[16.0,99.9]" />
+        </HostList>
+        <LocaleList>
+            <Locale Code="All" />
+        </LocaleList>
+        <RequiredRuntimeList>
+            <!-- AE 16.0 (CC 2019) uz obsahuje CEP 9, takze rozsah hostu sedi -->
+            <RequiredRuntime Name="CSXS" Version="9.0" />
+        </RequiredRuntimeList>
+    </ExecutionEnvironment>
+    <DispatchInfoList>
+        <Extension Id="com.beneg.toolkit.panel2">
+            <DispatchInfo>
+                <Resources>
+                    <MainPath>./index.html</MainPath>
+                    <ScriptPath>./jsx/main.jsxbin</ScriptPath>
+                    <CEFCommandLine>
+                        <Parameter>--enable-nodejs</Parameter>
+                        <Parameter>--mixed-context</Parameter>
+                    </CEFCommandLine>
+                </Resources>
+                <Lifecycle>
+                    <AutoVisible>true</AutoVisible>
+                </Lifecycle>
+                <UI>
+                    <Type>Panel</Type>
+                    <Menu>BeneG Toolkit</Menu>
+                    <Geometry>
+                        <!--
+                            Pozor: tohle plati jen pri PRVNIM vytvoreni panelu.
+                            Potom si After Effects velikost pamatuje ve
+                            workspace a manifest ignoruje - aby se zmena tady
+                            projevila, je potreba Reset workspace to Saved
+                            Layout a teprve pak panel otevrit.
+
+                            Sirka v MinSize zustava stejna jako v Size zamerne.
+                            Kdyz je mensi, AE panel pri opetovnem otevreni rado
+                            stlaci na tu mensi hodnotu. Vyska je volna a MaxSize
+                            neni zadne, takze zmena velikosti i dokovani
+                            zustavaji bez omezeni.
+                        -->
+                        <Size>
+                            <Height>760</Height>
+                            <Width>440</Width>
+                        </Size>
+                        <MinSize>
+                            <Height>400</Height>
+                            <Width>440</Width>
+                        </MinSize>
+                    </Geometry>
+                </UI>
+            </DispatchInfo>
+        </Extension>
+    </DispatchInfoList>
+</ExtensionManifest>

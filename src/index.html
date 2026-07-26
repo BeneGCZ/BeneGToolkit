@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>BeneG Toolkit</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="app">
+
+        <!-- ====== SIDEBAR ====== -->
+        <div class="sidebar">
+            <div class="logo">BeneG Toolkit</div>
+            <div class="nav">
+                <button class="nav-btn active" data-page="curves">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19C3 19 6.5 19 9 13.5S15 5 21 5"/><circle cx="3" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="21" cy="5" r="1.6" fill="currentColor" stroke="none"/></svg></span>
+                    <span data-i18n="nav.curves">Curves</span>
+                </button>
+                <button class="nav-btn" data-page="main">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z"/><path d="m3 12.5 9 4.5 9-4.5"/><path d="m3 17 9 4.5 9-4.5"/></svg></span>
+                    <span data-i18n="nav.main">Main</span>
+                </button>
+                <button class="nav-btn" data-page="organize">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.2h8A1.5 1.5 0 0 1 20 9.7v8.8a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3 18.5v-11Z"/><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h4l2 2.2H21"/></svg></span>
+                    <span data-i18n="nav.organize">Organize</span>
+                </button>
+                <button class="nav-btn" data-page="tools">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 1 0 5 5l-3.6-1.4-1.4-3.6Z" transform="rotate(180 12 12)"/><path d="M14.5 9.5 4.8 19.2a1.9 1.9 0 0 0 2.7 2.7l9.7-9.7"/></svg></span>
+                    <span data-i18n="nav.tools">Tools</span>
+                </button>
+                <button class="nav-btn" data-page="presets">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.6 6.4.8-4.7 4.3 1.2 6.3L12 17l-5.5 3 1.2-6.3L3 9.4l6.4-.8L12 3Z"/></svg></span>
+                    <span data-i18n="nav.presets">Presets</span>
+                </button>
+                <button class="nav-btn" data-page="settings">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg></span>
+                    <span data-i18n="nav.settings">Settings</span>
+                </button>
+                <button class="nav-btn" data-page="guide">
+                    <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5v-15Z"/><path d="M4 19.5A1.5 1.5 0 0 1 5.5 18H19v3H5.5A1.5 1.5 0 0 1 4 19.5Z"/><path d="M8 7.5h7M8 11h5"/></svg></span>
+                    <span data-i18n="nav.guide">Guide</span>
+                </button>
+            </div>
+            <div class="fps">v1.0</div>
+        </div>
+
+        <!-- ====== CONTENT ====== -->
+        <div class="content">
+
+            <!-- ---------- PAGE: CURVES ---------- -->
+            <div class="page active" id="page-curves">
+                <div class="section">
+                    <div class="section-title" data-i18n="curves.title">Editor křivek</div>
+                    <div id="curveWrap" class="curve-wrap">
+                        <canvas id="curveCanvas" width="240" height="150"></canvas>
+                        <div id="curveResize" class="curve-resize" data-i18n-title="tip.resizeEditor">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <div id="curveMenu" class="curve-menu">
+                        <div class="menu-item" data-action="reverse" data-i18n="curves.reverse">Reverse křivku</div>
+                    </div>
+                    <div class="bezier-inputs">
+                        <input type="text" id="bez0" class="bez-in" value="0.33" />
+                        <input type="text" id="bez1" class="bez-in" value="0.00" />
+                        <input type="text" id="bez2" class="bez-in" value="0.67" />
+                        <input type="text" id="bez3" class="bez-in" value="1.00" />
+                    </div>
+                    <div id="shapeDisplay" class="shape-display">Ease</div>
+
+                    <div class="ease-preview" id="easePreview" data-i18n-data-i18n-title="curves.previewHint">
+                        <div class="ease-track"><div class="ease-dot"></div></div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button id="readCurve" class="btn secondary" data-i18n="curves.readKeys" data-i18n-title="tip.readCurve">Číst z keyframů</button>
+                        <button id="applyCurve" class="btn primary" data-i18n="curves.apply" data-i18n-title="tip.applyCurve">Aplikovat</button>
+                    </div>
+                </div>
+
+                <!-- PRESET LIBRARY -->
+                <div class="section">
+                    <div class="section-title lib-header">
+                        <span data-i18n="lib.title">Knihovna presetů</span>
+                        <div class="lib-actions">
+                            <button id="savePreset" class="mini-btn" data-i18n-title="tip.savePreset" data-i18n="lib.save">+ Uložit</button>
+                            <button id="importFlow" class="mini-btn" data-i18n-title="tip.import" data-i18n="lib.import">Import</button>
+                            <button id="exportFlow" class="mini-btn" data-i18n-title="tip.export" data-i18n="lib.export">Export</button>
+                        </div>
+                    </div>
+
+                    <!-- Library switcher -->
+                    <div class="lib-switcher">
+                        <select id="librarySelect" class="select-full"></select>
+                        <button id="newLibrary" class="icon-btn" data-i18n-title="tip.libNew">+</button>
+                        <button id="renameLibrary" class="icon-btn" data-i18n-title="tip.libRename">✎</button>
+                        <button id="deleteLibrary" class="icon-btn" data-i18n-title="tip.libDelete">🗑</button>
+                    </div>
+
+                    <div id="presetGrid" class="preset-grid">
+                        <!-- filled in by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ---------- PAGE: MAIN ---------- -->
+            <div class="page" id="page-main">
+                <div class="section">
+                    <div class="section-title" data-i18n="main.layers">Vrstvy</div>
+                    <div class="grid">
+                        <button id="addNull" class="btn">Null</button>
+                        <button id="addAdjustment" class="btn">Adjustment</button>
+                        <button id="addSolid" class="btn">Solid</button>
+                        <button id="addCamera" class="btn">Camera</button>
+                    </div>
+                    <label class="check-row">
+                        <input type="checkbox" id="parentLayers" />
+                        <span data-i18n="main.parentLayers">Parent layers</span>
+                    </label>
+
+                    <div class="sub-label" style="margin-top:8px;" data-i18n="main.solidColor">Barva solidu:</div>
+                    <div class="solid-bar">
+                        <div id="colorPreview" class="color-preview" style="background:#808080;"></div>
+                        <input type="text" id="hexInput" class="hex-input" value="#808080" />
+                        <button id="copyHex" class="hex-copy" data-i18n-title="tip.copyHex">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                <path d="M5 15V5a2 2 0 0 1 2-2h10"/>
+                            </svg>
+                        </button>
+                        <!--
+                            The browser's own <input type="color"> is gone: the
+                            eyedropper in that dialog does nothing inside a CEP
+                            panel. This button opens the After Effects picker
+                            instead, where it works.
+                        -->
+                        <button id="pickerHex" class="picker-btn" data-i18n-title="tip.pickColor">
+                            <span id="pickerSwatch" class="picker-swatch" style="background:#808080"></span>
+                        </button>
+                    </div>
+
+                </div>
+                <div class="section">
+                    <div class="section-title" data-i18n="main.transform">Transform</div>
+                    <div class="grid">
+                        <button id="centerAnchor" class="btn" data-i18n="main.centerAnchor" data-i18n-title="tip.centerAnchor">Center Anchor</button>
+                        <button id="centerComp" class="btn" data-i18n="main.centerInComp" data-i18n-title="tip.centerComp">Center v kompozici</button>
+                    </div>
+
+                    <div class="sub-label" style="margin-top:8px;" data-i18n="main.anchorPoint">Anchor point:</div>
+                    <div class="anchor-grid">
+                        <button class="anchor-btn" data-anchor="tl" data-i18n-title="tip.anchorTL"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="2.5" cy="2.5" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="tc" data-i18n-title="tip.anchorTC"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="2.5" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="tr" data-i18n-title="tip.anchorTR"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="13.5" cy="2.5" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="ml" data-i18n-title="tip.anchorML"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="2.5" cy="8" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="mc" data-i18n-title="tip.anchorMC"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="mr" data-i18n-title="tip.anchorMR"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="13.5" cy="8" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="bl" data-i18n-title="tip.anchorBL"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="2.5" cy="13.5" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="bc" data-i18n-title="tip.anchorBC"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="13.5" r="2.2" fill="currentColor"/></svg></button>
+                        <button class="anchor-btn" data-anchor="br" data-i18n-title="tip.anchorBR"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="13.5" cy="13.5" r="2.2" fill="currentColor"/></svg></button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="main.align">Align</div>
+
+                    <div class="sub-label" style="margin-top:8px;" data-i18n="main.alignLabel">Zarovnání:</div>
+                    <div class="align-grid align-grid-7">
+                        <button class="align-btn" data-align="left" data-i18n-title="tip.alignLeft"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="2" y1="2" x2="2" y2="14" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="3.5" width="9" height="3.5" fill="currentColor"/><rect x="4" y="9" width="6" height="3.5" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="centerH" data-i18n-title="tip.alignCH"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="8" y1="2" x2="8" y2="14" stroke="currentColor" stroke-width="1.5"/><rect x="3.5" y="3.5" width="9" height="3.5" fill="currentColor"/><rect x="5" y="9" width="6" height="3.5" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="right" data-i18n-title="tip.alignRight"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="14" y1="2" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="3.5" width="9" height="3.5" fill="currentColor"/><rect x="6" y="9" width="6" height="3.5" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="center" data-i18n-title="tip.alignCenter"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="8" y1="1.5" x2="8" y2="14.5" stroke="currentColor" stroke-width="1" opacity="0.6"/><line x1="1.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1" opacity="0.6"/><rect x="4.5" y="4.5" width="7" height="7" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="top" data-i18n-title="tip.alignTop"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="2" y1="2" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/><rect x="3.5" y="4" width="3.5" height="9" fill="currentColor"/><rect x="9" y="4" width="3.5" height="6" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="centerV" data-i18n-title="tip.alignCV"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5"/><rect x="3.5" y="3.5" width="3.5" height="9" fill="currentColor"/><rect x="9" y="5" width="3.5" height="6" fill="currentColor"/></svg></button>
+                        <button class="align-btn" data-align="bottom" data-i18n-title="tip.alignBottom"><svg viewBox="0 0 16 16" width="15" height="15"><line x1="2" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/><rect x="3.5" y="3" width="3.5" height="9" fill="currentColor"/><rect x="9" y="6" width="3.5" height="6" fill="currentColor"/></svg></button>
+                    </div>
+
+                    <div class="sub-label" style="margin-top:8px;" data-i18n="main.distribute">Rozmístění (min. 3 vrstvy):</div>
+                    <div class="align-grid">
+                        <button class="dist-btn" data-dist="hLeft" data-i18n-title="tip.distL"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="1" y="4" width="2.5" height="8" fill="currentColor"/><rect x="6.75" y="4" width="2.5" height="8" fill="currentColor"/><rect x="12.5" y="4" width="2.5" height="8" fill="currentColor"/></svg></button>
+                        <button class="dist-btn" data-dist="hCenter" data-i18n-title="tip.distCH"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="1" y="5" width="2.5" height="6" fill="currentColor"/><rect x="6.75" y="3.5" width="2.5" height="9" fill="currentColor"/><rect x="12.5" y="5" width="2.5" height="6" fill="currentColor"/></svg></button>
+                        <button class="dist-btn" data-dist="hRight" data-i18n-title="tip.distR"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="1" y="4" width="2.5" height="8" fill="currentColor"/><rect x="6.75" y="4" width="2.5" height="8" fill="currentColor"/><rect x="12.5" y="4" width="2.5" height="8" fill="currentColor"/><line x1="0.5" y1="14.5" x2="15.5" y2="14.5" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg></button>
+                        <button class="dist-btn" data-dist="vTop" data-i18n-title="tip.distT"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="4" y="1" width="8" height="2.5" fill="currentColor"/><rect x="4" y="6.75" width="8" height="2.5" fill="currentColor"/><rect x="4" y="12.5" width="8" height="2.5" fill="currentColor"/></svg></button>
+                        <button class="dist-btn" data-dist="vCenter" data-i18n-title="tip.distCV"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="5" y="1" width="6" height="2.5" fill="currentColor"/><rect x="3.5" y="6.75" width="9" height="2.5" fill="currentColor"/><rect x="5" y="12.5" width="6" height="2.5" fill="currentColor"/></svg></button>
+                        <button class="dist-btn" data-dist="vBottom" data-i18n-title="tip.distB"><svg viewBox="0 0 16 16" width="15" height="15"><rect x="4" y="1" width="8" height="2.5" fill="currentColor"/><rect x="4" y="6.75" width="8" height="2.5" fill="currentColor"/><rect x="4" y="12.5" width="8" height="2.5" fill="currentColor"/><line x1="14.5" y1="0.5" x2="14.5" y2="15.5" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg></button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="main.fitScale">Fit / Scale</div>
+                    <div class="grid">
+                        <button id="fitToComp" class="btn" data-i18n="main.fitToComp" data-i18n-title="tip.fit">Fit to Comp</button>
+                        <button id="fillToComp" class="btn" data-i18n="main.fillToComp" data-i18n-title="tip.fill">Fill to Comp</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="main.flip">Flip</div>
+                    <div class="grid">
+                        <button id="flipX" class="btn" data-i18n="main.flipX" data-i18n-title="tip.flipX">Flip X ↔</button>
+                        <button id="flipY" class="btn" data-i18n="main.flipY" data-i18n-title="tip.flipY">Flip Y ↕</button>
+                    </div>
+                </div>
+
+
+                <div class="section">
+                    <div class="section-title prop-head">
+                        <span data-i18n="main.transformValues">Transform</span>
+                        <span id="resetTransform" class="prop-reset" data-i18n="main.resetTransform" data-i18n-title="tip.resetTransform">Reset</span>
+                    </div>
+                    <div class="prop-list">
+                        <div class="prop-row" data-row="anchor">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="-1" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="1" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="main.tfAnchor">tfAnchor</span>
+                            <span class="prop-vals"><span class="prop-num" data-key="ax">0</span><span class="prop-num" data-key="ay">0</span></span>
+                        </div>
+                        <div class="prop-row" data-row="position">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="-1" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="1" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="main.tfPosition">tfPosition</span>
+                            <span class="prop-vals"><span class="prop-num" data-key="px">0</span><span class="prop-num" data-key="py">0</span></span>
+                        </div>
+                        <div class="prop-row" data-row="scale">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="-1" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="1" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="main.tfScale">tfScale</span>
+                            <span class="prop-vals"><span id="scaleLink" class="prop-link on" data-i18n-title="tip.scaleLink"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.9 7.6a2.3 2.3 0 0 1 0-3.2l1.3-1.3a2.3 2.3 0 0 1 3.2 3.2l-.6.6" stroke-linecap="round"/><path d="M7.1 4.4a2.3 2.3 0 0 1 0 3.2L5.8 8.9a2.3 2.3 0 0 1-3.2-3.2l.6-.6" stroke-linecap="round"/></svg></span><span class="prop-num" data-key="sx">0</span><span class="prop-num" data-key="sy">0</span></span>
+                        </div>
+                        <div class="prop-row" data-row="rotation">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="-1" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="1" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="main.tfRotation">tfRotation</span>
+                            <span class="prop-vals"><span class="prop-num" data-key="rot">0</span></span>
+                        </div>
+                        <div class="prop-row" data-row="opacity">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="-1" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="1" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="main.tfOpacity">tfOpacity</span>
+                            <span class="prop-vals"><span class="prop-num" data-key="op">0</span></span>
+                        </div>
+                    </div>
+                    <p class="about" data-i18n="main.transformAbout"></p>
+                </div>
+
+                <div class="section">
+                    <div class="shape-cols">
+                        <div class="shape-col">
+                    <div class="section-title prop-head">
+                        <span data-i18n="main.shapeProps">Shape properties</span>
+                        <span id="resetShapeProps" class="prop-reset" data-i18n="main.resetTransform">Reset</span>
+                    </div>
+                    <div id="shapeGroupName" class="shape-target">--</div>
+                    <div class="prop-list">
+                        <div class="prop-row" data-srow="size">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.size">size</span>
+                            <span class="prop-vals"><span class="prop-link on" data-sklink="size"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.9 7.6a2.3 2.3 0 0 1 0-3.2l1.3-1.3a2.3 2.3 0 0 1 3.2 3.2l-.6.6" stroke-linecap="round"/><path d="M7.1 4.4a2.3 2.3 0 0 1 0 3.2L5.8 8.9a2.3 2.3 0 0 1-3.2-3.2l.6-.6" stroke-linecap="round"/></svg></span><span class="prop-num" data-sk="size" data-part="0">0</span><span class="prop-num" data-sk="size" data-part="1">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="roundness">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.roundness">roundness</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="roundness" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="fillColor">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.fillColor">fillColor</span>
+                            <span class="prop-vals"><input type="checkbox" class="prop-check" data-sen="fill" data-i18n-title="sh.toggleOn" /><span class="prop-swatch" data-sk="fillColor"></span><select class="prop-type" data-stype="fill"><option value="none" data-i18n="sh.tNone">None</option><option value="solid" data-i18n="sh.tSolid">Solid Color</option><option value="linear" data-i18n="sh.tLinear">Linear Gradient</option><option value="radial" data-i18n="sh.tRadial">Radial Gradient</option></select></span>
+                        </div>
+                        <div class="prop-row" data-srow="strokeColor">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.strokeColor">strokeColor</span>
+                            <span class="prop-vals"><input type="checkbox" class="prop-check" data-sen="stroke" data-i18n-title="sh.toggleOn" /><span class="prop-swatch" data-sk="strokeColor"></span><select class="prop-type" data-stype="stroke"><option value="none" data-i18n="sh.tNone">None</option><option value="solid" data-i18n="sh.tSolid">Solid Color</option><option value="linear" data-i18n="sh.tLinear">Linear Gradient</option><option value="radial" data-i18n="sh.tRadial">Radial Gradient</option></select></span>
+                        </div>
+                        <div class="prop-row" data-srow="strokeWidth">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.strokeWidth">strokeWidth</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="strokeWidth" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="lineCap">
+                            <span class="prop-keys prop-keys-empty"></span>
+                            <span class="prop-name" data-i18n="sh.lineCap">lineCap</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="lineCap" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="lineJoin">
+                            <span class="prop-keys prop-keys-empty"></span>
+                            <span class="prop-name" data-i18n="sh.lineJoin">lineJoin</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="lineJoin" data-part="0">0</span></span>
+                        </div>
+                    </div>
+
+                        </div>
+                        <div class="shape-col">
+                    <div class="section-title prop-head">
+                        <span data-i18n="main.shapeTransform">Shape transform</span>
+                        <span id="resetShapeTf" class="prop-reset" data-i18n="main.resetTransform">Reset</span>
+                    </div>
+                    <div class="prop-list">
+                        <div class="prop-row" data-srow="anchor">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.anchor">anchor</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="anchor" data-part="0">0</span><span class="prop-num" data-sk="anchor" data-part="1">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="position">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.position">position</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="position" data-part="0">0</span><span class="prop-num" data-sk="position" data-part="1">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="scale">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.scale">scale</span>
+                            <span class="prop-vals"><span class="prop-link on" data-sklink="scale"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.9 7.6a2.3 2.3 0 0 1 0-3.2l1.3-1.3a2.3 2.3 0 0 1 3.2 3.2l-.6.6" stroke-linecap="round"/><path d="M7.1 4.4a2.3 2.3 0 0 1 0 3.2L5.8 8.9a2.3 2.3 0 0 1-3.2-3.2l.6-.6" stroke-linecap="round"/></svg></span><span class="prop-num" data-sk="scale" data-part="0">0</span><span class="prop-num" data-sk="scale" data-part="1">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="skew">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.skew">skew</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="skew" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="skewAxis">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.skewAxis">skewAxis</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="skewAxis" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="rotation">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.rotation">rotation</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="rotation" data-part="0">0</span></span>
+                        </div>
+                        <div class="prop-row" data-srow="opacity">
+                            <span class="prop-keys">
+                                <span class="kf-watch" data-i18n-title="tip.stopwatch"><svg viewBox="0 0 12 12" aria-hidden="true"><circle class="ic-face" cx="6" cy="7.2" r="3.9"/><path d="M4.4 1.1h3.2M6 1.1v1.9" stroke-linecap="round"/><path class="ic-hand" d="M6 7.2V4.9" stroke-linecap="round"/></svg></span>
+                                <span class="kf-nav" data-dir="prev" data-i18n-title="tip.prevKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M6.4 0.8 2.1 5l4.3 4.2z"/></svg></span>
+                                <span class="kf-dot" data-i18n-title="tip.keyHere"><svg viewBox="0 0 10 10" aria-hidden="true"><path class="ic-face" d="M5 1.1 8.9 5 5 8.9 1.1 5z"/></svg></span>
+                                <span class="kf-nav" data-dir="next" data-i18n-title="tip.nextKey"><svg viewBox="0 0 8 10" aria-hidden="true"><path class="ic-solid" d="M1.6 0.8 5.9 5l-4.3 4.2z"/></svg></span>
+                            </span>
+                            <span class="prop-name" data-i18n="sh.opacity">opacity</span>
+                            <span class="prop-vals"><span class="prop-num" data-sk="opacity" data-part="0">0</span></span>
+                        </div>
+                    </div>
+                                            </div>
+                    </div>
+                    <p class="about" data-i18n="main.shapesAbout"></p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="main.rename">Přejmenování vrstev</div>
+                    <div class="val-row">
+                        <input type="text" id="renameBase" placeholder="základ jména (např. BG)" data-i18n-placeholder="main.renamePlaceholder" style="flex:1;" />
+                        <button id="renameLayers" class="btn" style="flex:1;" data-i18n="main.renameBtn">Přejmenuj</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="main.precomp">Precompozice</div>
+                    <div class="val-row">
+                        <input type="text" id="precompName" placeholder="název precompu" data-i18n-placeholder="main.precompName" style="flex:1;" />
+                    </div>
+                    <div class="grid" style="margin-top:6px;">
+                        <button id="precompMove" class="btn" data-i18n="main.moveAllAttributes" data-i18n-title="tip.precompMove">Move all attributes</button>
+                        <button id="precompLeave" class="btn" data-i18n="main.leaveAllAttributes" data-i18n-title="tip.precompLeave">Leave all attributes</button>
+                    </div>
+                    <p class="about" style="margin-top:6px;" data-i18n="main.precompAbout">Každá vybraná vrstva jde do vlastního precompu.</p>
+                </div>
+            </div>
+
+            <!-- ---------- PAGE: TOOLS ---------- -->
+            <div class="page" id="page-tools">
+                <div class="section">
+                    <div class="section-title" data-i18n="tools.resolution">Rozlišení kompozice</div>
+                    <div class="grid">
+                        <button class="btn res-btn" data-w="1920" data-h="1080">1920×1080</button>
+                        <button class="btn res-btn" data-w="3840" data-h="2160">3840×2160</button>
+                        <button class="btn res-btn" data-w="1080" data-h="1080">1080×1080</button>
+                        <button class="btn res-btn" data-w="1080" data-h="1920">1080×1920</button>
+                    </div>
+                    <div class="val-row" style="margin-top:6px;">
+                        <input type="number" id="customW" placeholder="šířka" data-i18n-placeholder="tools.widthPlaceholder" min="1" />
+                        <span>×</span>
+                        <input type="number" id="customH" placeholder="výška" data-i18n-placeholder="tools.heightPlaceholder" min="1" />
+                        <button id="applyRes" class="btn" data-i18n="tools.set">Nastav</button>
+                    </div>
+                    <label class="check-row" style="margin-top:6px;">
+                        <input type="checkbox" id="scaleLayersRes" />
+                        <span data-i18n="tools.scaleLayers">Doškálovat vrstvy podle nového rozlišení</span>
+                    </label>
+                    <p class="about" style="margin-top:6px;" data-i18n="tools.resolutionAbout">Vrstvy se vždy vycentrují na nový střed.</p>
+                </div>
+                <div class="section">
+                    <div class="section-title" data-i18n="tools.fps">FPS kompozice</div>
+                    <div class="grid">
+                        <button class="btn fps-btn" data-fps="23.976">23.976</button>
+                        <button class="btn fps-btn" data-fps="24">24</button>
+                        <button class="btn fps-btn" data-fps="25">25</button>
+                        <button class="btn fps-btn" data-fps="30">30</button>
+                        <button class="btn fps-btn" data-fps="60">60</button>
+                        <!-- Sits in the grid so it lines up beside 60 rather than
+                             dropping onto a row of its own -->
+                        <div class="val-row fps-custom">
+                            <input type="number" id="customFps" placeholder="custom FPS" data-i18n-placeholder="tools.fpsPlaceholder" min="1" step="0.001" />
+                            <button id="applyFps" class="btn" data-i18n="tools.set">Set</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="tools.duration">Délka kompozice</div>
+                    <div class="grid">
+                        <button class="btn exp-btn" data-sec="1">+1s</button>
+                        <button class="btn exp-btn" data-sec="-1">−1s</button>
+                        <button class="btn exp-btn" data-sec="5">+5s</button>
+                        <button class="btn exp-btn" data-sec="-5">−5s</button>
+                        <button class="btn exp-btn" data-sec="10">+10s</button>
+                        <button class="btn exp-btn" data-sec="-10">−10s</button>
+                    </div>
+                    <div class="val-row" style="margin-top:6px;">
+                        <input type="number" id="customExpand" placeholder="± sekund (i záporné)" data-i18n-placeholder="tools.durationPlaceholder" step="0.5" />
+                        <button id="applyExpand" class="btn" data-i18n="tools.durationApply">Použít</button>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title" data-i18n="tools.blur">Motion Blur / Frame Blending</div>
+                    <div class="grid">
+                        <button id="mbOn" class="btn" data-i18n="tools.mblurOn">MBlur ON</button>
+                        <button id="mbOff" class="btn" data-i18n="tools.mblurOff">MBlur OFF</button>
+                        <button id="fbPixelOn" class="btn" data-i18n="tools.fblendOn">FBlend ON</button>
+                        <button id="fbOff" class="btn" data-i18n="tools.fblendOff">FBlend OFF</button>
+                    </div>
+                    <p class="about" style="margin-top:6px;" data-i18n="tools.blurAbout">Zapnutí rovnou aktivuje i master přepínač kompozice.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="tools.cache">Vyčištění cache</div>
+                    <button id="purgeAll" class="btn" style="width:100%;" data-i18n="tools.cacheBtn" data-i18n-title="tip.purge">Vyčistit cache</button>
+                </div>
+
+            </div>
+
+            <!-- ---------- PAGE: ORGANIZE ---------- -->
+            <div class="page" id="page-organize">
+                <div class="section">
+                    <div class="section-title" data-i18n="org.title">Organizace projektu</div>
+                    <p class="about" data-i18n="org.fullAbout">Roztřídí všechny položky do složek podle typu.</p>
+                </div>
+
+                <div class="section">
+                    <button id="runOrganize" class="btn primary" style="width:100%;" data-i18n="org.run" data-i18n-title="tip.organize">Organizovat projekt</button>
+                    <div id="orgLog" class="org-log"></div>
+                </div>
+            </div>
+
+            <!-- ---------- PAGE: PRESETS ---------- -->
+            <div class="page" id="page-presets">
+                <div class="section">
+                    <div class="section-title" data-i18n="fx.title">Effect presets</div>
+                    <p class="about" data-i18n="fx.about"></p>
+                </div>
+
+                <div class="section">
+                    <div class="val-row">
+                        <button id="pickPresetFolder" class="btn" style="flex:1;" data-i18n="fx.chooseFolder" data-i18n-title="tip.fxFolder">Choose folder</button>
+                        <button id="refreshPresets" class="mini-btn" data-i18n="fx.refresh" data-i18n-title="tip.fxRefresh">Refresh</button>
+                    </div>
+                    <div id="presetFolderPath" class="fx-path"></div>
+                </div>
+
+                <div class="section" id="fxFavSection">
+                    <div class="section-title" data-i18n="fx.favorites">Favorites</div>
+                    <div id="presetFavList" class="fx-list fx-fav"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title" data-i18n="fx.all">All presets</div>
+                    <input type="text" id="presetFilter" data-i18n-placeholder="fx.filter" placeholder="filter" style="width:100%;" />
+                    <div id="presetList" class="fx-list"></div>
+                </div>
+            </div>
+
+            <!-- ---------- PAGE: SETTINGS ---------- -->
+            <div class="page" id="page-settings">
+                <div class="section">
+                    <div class="section-title" data-i18n="settings.language">Jazyk</div>
+                    <select id="langSelect" class="select-full"></select>
+                    <p class="about" style="margin-top:6px;" data-i18n="settings.languageAbout">Platí pro celý panel včetně hlášek.</p>
+                    <p class="about lang-note" data-i18n="settings.langNote"></p>
+                </div>
+                <div class="section">
+                    <div class="section-title" data-i18n="settings.about">O panelu</div>
+                    <p class="about" data-i18n="settings.aboutText">BeneG Toolkit v1.0 — editor easing křivek s podporou .flow formátu, knihovnou presetů a nástroji pro organizaci projektu.</p>
+                </div>
+                <div class="section">
+                    <div class="section-title" data-i18n="lib.sectionTitle">Knihovna</div>
+                    <p class="about" data-i18n="lib.about">Presety se ukládají do souboru v uživatelské složce a přežijí restart. Import/Export přes .flow je kompatibilní s Flow pluginem.</p>
+                    <button id="resetLibrary" class="btn" style="width:100%;margin-top:6px;" data-i18n="lib.reset" data-i18n-title="tip.resetPanel">Obnovit výchozí presety</button>
+                </div>
+            </div>
+
+            <!-- ---------- PAGE: GUIDE ---------- -->
+            <div class="page" id="page-guide">
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.title">Guide</div>
+                    <p class="about" data-i18n="guide.intro"></p>
+                </div>
+
+                <!-- CURVES -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.curvesTitle">Curves</div>
+                    <p class="about" data-i18n="guide.curvesText"></p>
+                    <p class="about" data-i18n="guide.curvesHandles"></p>
+                    <p class="about" data-i18n="guide.curvesNumbers"></p>
+                    <p class="about" data-i18n="guide.curvesModifiers"></p>
+                    <p class="about" data-i18n="guide.curvesApply"></p>
+                    <p class="about" data-i18n="guide.curvesRead"></p>
+                    <p class="about" data-i18n="guide.curvesLibrary"></p>
+                    <p class="about" data-i18n="guide.curvesFlow"></p>
+                    <p class="about" data-i18n="guide.curvesRamps"></p>
+                    <p class="about" data-i18n="guide.curvesMatched"></p>
+                    <p class="about" data-i18n="guide.rowModifiers"></p>
+                    <p class="about" data-i18n="guide.curvesPreview"></p>
+                    <p class="about" data-i18n="guide.curvesResize"></p>
+                </div>
+
+                <!-- MAIN -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.mainTitle">Main</div>
+                    <p class="about" data-i18n="guide.mainLayers"></p>
+                    <p class="about" data-i18n="guide.mainColor"></p>
+                    <p class="about" data-i18n="guide.mainAnchor"></p>
+                    <p class="about" data-i18n="guide.mainTransform"></p>
+                    <p class="about" data-i18n="guide.mainAlign"></p>
+                    <p class="about" data-i18n="guide.mainRename"></p>
+                </div>
+
+                <!-- PRECOMP -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.precompTitle">Pre-compose</div>
+                    <p class="about" data-i18n="guide.precompIntro"></p>
+                    <p class="about" data-i18n="guide.precompMove"></p>
+                    <p class="about" data-i18n="guide.precompLeave"></p>
+                    <p class="about" data-i18n="guide.precompNote"></p>
+                </div>
+
+                <!-- EFFECT PRESETS -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.fxTitle">Effect presets</div>
+                    <p class="about" data-i18n="guide.fxIntro"></p>
+                    <p class="about" data-i18n="guide.fxFolders"></p>
+                    <p class="about" data-i18n="guide.fxFavorites"></p>
+                </div>
+
+                <!-- TOOLS -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.toolsTitle">Tools</div>
+                    <p class="about" data-i18n="guide.toolsResolution"></p>
+                    <p class="about" data-i18n="guide.toolsFps"></p>
+                    <p class="about" data-i18n="guide.toolsDuration"></p>
+                    <p class="about" data-i18n="guide.toolsBlur"></p>
+                    <p class="about" data-i18n="guide.toolsCache"></p>
+                </div>
+
+                <!-- ORGANIZE -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.organizeTitle">Organize</div>
+                    <p class="about" data-i18n="guide.organizeText"></p>
+                    <p class="about" data-i18n="guide.organizeFolders"></p>
+                    <p class="about" data-i18n="guide.organizeWarn"></p>
+                </div>
+
+                <!-- SHORTCUTS -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.shortcutsTitle">Keyboard shortcuts</div>
+                    <p class="about" data-i18n="guide.shortcutsWhy"></p>
+                    <p class="about" data-i18n="guide.shortcutsHow"></p>
+                    <p class="about" data-i18n="guide.shortcutsWhere"></p>
+                </div>
+
+                <!-- TIPS -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.tipsTitle">Tips</div>
+                    <p class="about" data-i18n="guide.tipUndo"></p>
+                    <p class="about" data-i18n="guide.tipStatus"></p>
+                    <p class="about" data-i18n="guide.tipSkipped"></p>
+                    <p class="about" data-i18n="guide.tipLanguage"></p>
+                    <p class="about" data-i18n="guide.tipReset"></p>
+                </div>
+
+                <!-- TROUBLESHOOTING -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.troubleTitle">Troubleshooting</div>
+                    <p class="about" data-i18n="guide.troubleNoComp"></p>
+                    <p class="about" data-i18n="guide.troubleHidden"></p>
+                    <p class="about" data-i18n="guide.troubleNothing"></p>
+                    <p class="about" data-i18n="guide.troubleSize"></p>
+                </div>
+
+                <div class="section">
+                    <div class="footer-row">
+                        <span class="footer-credit">Made by BeneG</span>
+                        <button id="supportBtn" class="btn" data-i18n="guide.support">SUPPORT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom colour picker, shown as an overlay above the panel -->
+            <div id="colorPicker" class="cp-overlay">
+                <div class="cp-panel">
+                    <canvas id="cpField" class="cp-field" width="220" height="150"></canvas>
+                    <canvas id="cpHue" class="cp-hue" width="220" height="14"></canvas>
+
+                    <div class="cp-row">
+                        <div id="cpPreview" class="cp-preview"></div>
+                        <input type="text" id="cpHex" class="cp-hex" maxlength="7" />
+                        <button id="cpEyedropper" class="cp-eyedrop" data-i18n-title="cp.eyedropper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m19 3-1.5 1.5a2.1 2.1 0 0 0 0 3L18 8l-2 2-1-1-7.5 7.5L5 18l-1 2 2-1 1.5-2.5L15 9l-1-1 2-2 .5.5a2.1 2.1 0 0 0 3 0L21 5Z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="cp-row cp-rgb">
+                        <label>R<input type="number" id="cpR" min="0" max="255" /></label>
+                        <label>G<input type="number" id="cpG" min="0" max="255" /></label>
+                        <label>B<input type="number" id="cpB" min="0" max="255" /></label>
+                    </div>
+
+                    <div class="cp-recent" id="cpRecent"></div>
+
+                    <div class="cp-row cp-actions">
+                        <button id="cpCancel" class="btn" data-i18n="cp.cancel">Cancel</button>
+                        <button id="cpOk" class="btn primary" data-i18n="cp.ok">OK</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status" class="status" data-i18n="status.ready">Připraveno</div>
+        </div>
+    </div>
+
+    <script src="js/CSInterface.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/curveEditor.js"></script>
+    <script src="js/colorPicker.js"></script>
+    <script src="js/library.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/tools.js"></script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+# Builds the installable zip and publishes a GitHub release from a tag.
+#
+# The whole release flow is: bump ExtensionBundleVersion in CSXS/manifest.xml,
+# write the section in CHANGELOG.md, commit, then
+#
+#   git tag v1.1.0 && git push origin v1.1.0
+#
+# Everything below happens on its own, and the panel picks the release up within
+# a day - or immediately when someone presses Check for updates.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the tag
+        id: tag
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # A tag that disagrees with the manifest would ship an update the panel
+      # then refuses to install, because it checks the archive's own version.
+      # Better to fail here than to publish something broken.
+      - name: Check the manifest agrees with the tag
+        run: |
+          manifest=$(grep -o 'ExtensionBundleVersion="[^"]*"' CSXS/manifest.xml \
+                     | head -1 | cut -d'"' -f2)
+          tag="${{ steps.tag.outputs.version }}"
+          echo "manifest=$manifest tag=$tag"
+          if [ "$manifest" != "$tag" ]; then
+            echo "::error::CSXS/manifest.xml says $manifest but the tag says $tag."
+            exit 1
+          fi
+
+      # Pulls out the "## [1.1.0] - ..." section and stops at the next heading.
+      - name: Extract the release notes
+        id: notes
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { grab = 1; next }
+            grab && /^## \[/       { exit }
+            grab                   { print }
+          ' CHANGELOG.md > notes.md
+
+          if [ ! -s notes.md ]; then
+            echo "No section for $version in CHANGELOG.md" > notes.md
+          fi
+          cat notes.md
+
+      # The zip carries a BeneGToolkit/ folder so a manual install is a drag
+      # and drop. The updater strips the wrapper on its own, so both shapes
+      # install correctly.
+      - name: Build the zip
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          mkdir -p build/BeneGToolkit
+          rsync -a ./ build/BeneGToolkit/ \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude ".debug" \
+            --exclude ".installed.json" \
+            --exclude "build" \
+            --exclude "notes.md"
+          cd build
+          zip -qr "../BeneGToolkit-$version.zip" BeneGToolkit
+          cd ..
+          unzip -l "BeneGToolkit-$version.zip" | tail -5
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ steps.tag.outputs.version }}"
+          gh release create "${GITHUB_REF_NAME}" \
+            "BeneGToolkit-$version.zip" \
+            --title "BeneG Toolkit $version" \
+            --notes-file notes.md

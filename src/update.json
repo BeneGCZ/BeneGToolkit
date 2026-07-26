@@ -1,0 +1,21 @@
+{
+  "_comment": "Updater configuration. Change owner and repo to your GitHub account, everything else can usually stay. This file ships inside the release, so a value corrected here reaches everyone with the next update.",
+
+  "owner": "BeneGCZ",
+  "repo": "BeneGToolkit",
+
+  "_assetMatch": "Substring of the release asset filename to download. Empty = take the first .zip attached, or the source archive when nothing is attached.",
+  "assetMatch": "BeneGToolkit",
+
+  "_allowPrerelease": "Offer releases marked pre-release on GitHub. The user can also switch this on in Settings.",
+  "allowPrerelease": false,
+
+  "_checkIntervalHours": "At most one automatic check per this many hours.",
+  "checkIntervalHours": 24,
+
+  "_postponeHours": "How long the Later button silences the notification.",
+  "postponeHours": 24,
+
+  "_keep": "Files inside the extension folder an update must never overwrite or delete.",
+  "keep": [".debug", ".installed.json"]
+}

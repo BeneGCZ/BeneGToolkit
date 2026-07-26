@@ -1,0 +1,15 @@
+/*
+ * BeneG Toolkit - Fill To Comp
+ *
+ * Scales the selected layers so they cover the composition.
+ *
+ * Assign a keyboard shortcut in Edit > Keyboard Shortcuts (Application >
+ * File > Scripts) to run this from the timeline, where the panel's own
+ * shortcuts cannot reach.
+ */
+
+#include "_BeneGToolkit_Panel.jsx"
+
+(function () {
+    bgtRun("scaleToComp('fill')");
+})();

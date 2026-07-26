@@ -1,0 +1,18 @@
+{
+  "name": "BeneGToolkit",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build/inject-version.js && node build/build.js && node build/hash-files.js",
+    "manifest": "node build/make-manifest.js",
+    "package": "node build/package.js",
+    "sign": "node build/sign.js",
+    "release": "npm run build && npm run package && npm run manifest && npm run sign"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "javascript-obfuscator": "^4.1.0",
+    "jsxbin": "^2.1.3",
+    "terser": "^5.31.0"
+  }
+}

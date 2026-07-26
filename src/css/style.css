@@ -1,0 +1,1413 @@
+/*
+ * One palette for the whole panel.
+ *
+ * Everything interactive draws from --accent, so the panel has a single
+ * identity rather than one colour per section. The two state colours are kept
+ * apart from it on purpose: they carry meaning rather than decoration, and a
+ * keyframed property has to be distinguishable from one driven by an
+ * expression at a glance.
+ */
+:root {
+    --accent:      #4a9ae4;
+    --accent-soft: #8ab4e8;
+    --accent-bg:   #16283a;
+    --state-key:   #3cc76a;   /* the property is keyframed */
+    --state-expr:  #c48ae8;   /* the property has an expression */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: #0a0a0a;
+    color: #d4d4d4;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    font-size: 11px;
+    user-select: none;
+    overflow: hidden;
+}
+
+/* ====== LAYOUT: sidebar + content ====== */
+.app {
+    display: flex;
+    height: 100vh;
+    /*
+     * No hard minimum here. After Effects ignores MinSize from the manifest
+     * and hands out whatever width it likes, so the layout adapts instead of
+     * forcing a scrollbar the user cannot avoid.
+     */
+    min-width: 0;
+}
+
+.sidebar {
+    width: 56px;
+    background: #000;
+    border-right: 1px solid #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    flex-shrink: 0;
+}
+
+.logo {
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 20px;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    align-items: center;
+    flex: 1;
+}
+
+.nav-btn {
+    width: 60px;
+    background: transparent;
+    border: none;
+    color: #7a7a7a;
+    padding: 10px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    transition: all 0.15s;
+}
+
+.nav-btn:hover { background: #141414; color: #b4b4b4; }
+
+.nav-btn.active { color: var(--accent); }
+
+.nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Inline SVG icons - they inherit the button color via currentColor,
+   so the active state works without an extra rule. */
+.nav-svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    opacity: 0.75;
+}
+
+.nav-btn:hover .nav-svg { opacity: 1; }
+
+.nav-btn.active .nav-svg {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.fps {
+    font-size: 9px;
+    color: #444;
+    margin-top: auto;
+}
+
+/* ====== CONTENT ====== */
+.content {
+    flex: 1;
+    overflow-y: auto;
+    /* Nothing inside may push the panel wider than the window it lives in */
+    overflow-x: hidden;
+    padding: 10px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/*
+ * Rows and grids default to sizing themselves by their content, which lets a
+ * single long word or wide control force the whole panel to grow. Pinning the
+ * minimum to zero lets them shrink with the panel instead.
+ */
+.section,
+.val-row,
+.grid,
+.btn-row,
+.solid-bar,
+.preset-grid,
+.fx-list,
+.fx-row { min-width: 0; max-width: 100%; }
+
+.val-row { flex-wrap: wrap; }
+.solid-bar { flex-wrap: wrap; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+.section {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8a8a8a;
+    margin-bottom: 6px;
+}
+
+/* ====== CURVE EDITOR ====== */
+.curve-wrap {
+    position: relative;
+    width: 100%;
+    /*
+     * Square by default, so the vertical and horizontal scales match and a
+     * curve looks the same as it does in Flow. A wide, short editor squashes
+     * the shape even though the bezier values are identical.
+     * The height is still adjustable by dragging the handle below.
+     */
+    aspect-ratio: 1 / 1;
+    /* No min-height here - it would fight the aspect ratio on a narrow panel */
+    max-height: 900px;
+    margin-bottom: 10px;
+}
+
+#curveCanvas {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 4px;
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* Resize handle - three dots below the editor */
+.curve-resize {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -9px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: ns-resize;
+    user-select: none;
+}
+
+.curve-resize span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.15s;
+}
+
+.curve-resize:hover span,
+.curve-resize.dragging span {
+    background: var(--accent-soft);
+}
+
+/* Graph context menu */
+.curve-menu {
+    position: fixed;
+    display: none;
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 1000;
+    min-width: 120px;
+    padding: 4px 0;
+}
+.curve-menu.open { display: block; }
+.menu-item {
+    padding: 7px 14px;
+    font-size: 11px;
+    color: #d4d4d4;
+    cursor: pointer;
+}
+.menu-item:hover { background: #2f6ad0; color: #fff; }
+
+.bezier-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 6px;
+    min-width: 0;
+}
+.bez-in {
+    /*
+     * Four of these at a fixed 48px need 204px, which a docked panel often
+     * does not have - that is what was clipping the first and last field.
+     * They shrink to 36px first, then wrap to two rows.
+     */
+    flex: 1 1 36px;
+    min-width: 36px;
+    max-width: 64px;
+    background: #141414;
+    border: 1px solid #333;
+    color: var(--accent-soft);
+    padding: 3px 4px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: monospace;
+    text-align: center;
+}
+.bez-in:focus { border-color: var(--accent); outline: none; }
+
+.shape-display {
+    text-align: center;
+    font-size: 11px;
+    color: #c4a44a;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+/* Color picker row in settings */
+
+.val-group { flex: 1; }
+.val-group label { display: block; font-size: 9px; color: #7a7a7a; margin-bottom: 3px; }
+.val-row { display: flex; align-items: center; gap: 4px; }
+
+.val-row input {
+    width: 72px;
+    min-width: 0;
+    flex: 1 1 auto;
+    background: #141414;
+    border: 1px solid #333;
+    color: #d4d4d4;
+    padding: 5px 6px;
+    border-radius: 2px;
+    font-size: 11px;
+}
+.val-row input[type="text"] { width: auto; min-width: 0; }
+/* Button in an input row - keep it from growing wider than needed */
+.val-row .btn { flex: 0 0 auto; white-space: nowrap; }
+
+/* ====== BUTTONS ====== */
+.btn-row { display: flex; gap: 6px; margin-top: 8px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.btn {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #d4d4d4;
+    padding: 7px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background 0.1s;
+}
+.btn:hover { background: #282828; }
+.btn:active { background: #141414; }
+.btn.primary { flex: 1; background: #2f6ad0; border-color: #3f7ae0; color: #fff; }
+.btn.primary:hover { background: #3f7ae0; }
+.btn.secondary { flex: 1; }
+
+/* ====== PRESET LIBRARY ====== */
+/*
+ * The title plus three buttons do not fit a docked panel on one line - the
+ * Export button was falling off the right edge. Wrapping keeps all three
+ * reachable at any width.
+ */
+.lib-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+.lib-header > span { min-width: 0; }
+.lib-actions { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.mini-btn {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #9ab4d8;
+    padding: 3px 7px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 9px;
+}
+.mini-btn:hover { background: #282828; }
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.preset-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+    transition: border-color 0.15s;
+}
+.preset-card:hover { border-color: var(--accent); }
+
+/*
+ * The preset the editor is currently sitting on. Border plus a tinted
+ * background rather than colour alone, so it still reads when several cards
+ * are close together or the display is poorly calibrated.
+ */
+.preset-card.matched {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    box-shadow: inset 0 0 0 1px rgba(74, 154, 228, 0.35);
+}
+.preset-card.matched .pname { color: var(--accent-soft); }
+.preset-card canvas { display: block; width: 100%; height: 48px; }
+.preset-card .pname {
+    font-size: 8px;
+    color: #9a9a9a;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+.preset-card .pdel {
+    position: absolute;
+    top: 1px; right: 3px;
+    color: #666;
+    font-size: 11px;
+    line-height: 1;
+    display: none;
+}
+.preset-card:hover .pdel { display: block; }
+.preset-card .pdel:hover { color: #d0574a; }
+
+/* ====== CHECKBOX, TEXT ====== */
+.check-row {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 8px; font-size: 10px; color: #a4a4a4; cursor: pointer;
+}
+.check-row input { width: auto; cursor: pointer; }
+
+.about { font-size: 10px; color: #8a8a8a; line-height: 1.5; }
+
+/* Solid color bar */
+.solid-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.color-preview {
+    width: 40px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    flex-shrink: 0;
+}
+.hex-input {
+    flex: 1;
+    background: #141414;
+    border: 1px solid #333;
+    color: #d4d4d4;
+    padding: 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+    text-align: center;
+}
+.hex-input:focus { border-color: var(--accent); outline: none; }
+
+/* Color palette */
+.swatch {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    border: 1px solid #333;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s;
+}
+.swatch:hover { transform: scale(1.08); border-color: #666; }
+.swatch.selected { border-color: var(--accent); border-width: 2px; }
+.swatch .sdel {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: #d0574a;
+    color: #fff;
+    border-radius: 50%;
+    width: 13px; height: 13px;
+    font-size: 10px;
+    line-height: 13px;
+    text-align: center;
+    display: none;
+}
+.swatch:hover .sdel { display: block; }
+
+.select-full {
+    width: 100%;
+    background: #141414;
+    border: 1px solid #333;
+    color: #d4d4d4;
+    padding: 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.org-log {
+    margin-top: 8px;
+    font-size: 9px;
+    color: #7a7a7a;
+    font-family: monospace;
+    line-height: 1.5;
+    max-height: 90px;
+    overflow-y: auto;
+    background: #0f0f0f;
+    border: 1px solid #1a1a1a;
+    border-radius: 3px;
+    padding: 6px;
+    min-height: 40px;
+}
+
+/* ====== STATUS ====== */
+.status {
+    font-size: 10px;
+    color: #7a9a5a;
+    padding: 4px;
+    min-height: 18px;
+    position: sticky;
+    bottom: 0;
+    background: #0a0a0a;
+}
+.status.error { color: #c46a5a; }
+
+/* Library switcher */
+.lib-switcher {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    align-items: center;
+}
+.lib-switcher .select-full { flex: 1; }
+.icon-btn {
+    width: 26px;
+    height: 26px;
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #b4b4b4;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    padding: 0;
+}
+.icon-btn:hover { background: #282828; }
+
+/* Sub-heading inside a section (layer vs composition) */
+.sub-label {
+    font-size: 9px;
+    color: #7a7a7a;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* 3x3 grid for the anchor point */
+.anchor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 4px;
+}
+.anchor-btn {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #b4b4b4;
+    padding: 8px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: background 0.1s;
+}
+.anchor-btn:hover { background: #2f6ad0; color: #fff; border-color: #3f7ae0; }
+.anchor-btn:active { background: #141414; }
+
+/* Align / Distribute grid (6 buttons per row) */
+.align-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    margin-top: 4px;
+}
+.align-btn, .dist-btn {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #b4b4b4;
+    padding: 7px 2px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    transition: background 0.1s;
+}
+.align-btn:hover, .dist-btn:hover {
+    background: #2f6ad0; color: #fff; border-color: #3f7ae0;
+}
+.align-btn:active, .dist-btn:active { background: #141414; }
+
+/* Align grid with 7 buttons (6 + combined center) */
+.align-grid-7 {
+    grid-template-columns: repeat(7, 1fr);
+}
+/* SVG icons inside buttons - they inherit the text color */
+.anchor-btn svg, .align-btn svg, .dist-btn svg {
+    display: block;
+    margin: 0 auto;
+}
+.anchor-btn, .align-btn, .dist-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ====== FOOTER (author + support) ====== */
+.footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.footer-credit {
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 0.3px;
+}
+
+.footer-row .btn {
+    width: auto;
+    min-width: 100px;
+    letter-spacing: 0.5px;
+}
+
+/* ====== SCROLLBAR ======
+   The native CEF scrollbar looks dated and clashes with the panel,
+   so it is restyled as a thin, dark and unobtrusive one. */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border-radius: 5px;
+    /* Transparent border creates visual padding around the thumb */
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4f4f4f;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: #6a6a6a;
+    background-clip: content-box;
+}
+
+/* Corner between horizontal and vertical scrollbars */
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox / newer CEF */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a3a transparent;
+}
+
+/* ====== EASING PREVIEW ====== */
+/* A dot that runs the current curve, so the timing can be judged
+   before applying it to any keyframes. */
+.ease-preview {
+    margin-top: 8px;
+    padding: 6px 2px;
+    cursor: pointer;
+}
+
+.ease-track {
+    position: relative;
+    height: 10px;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 5px;
+}
+
+.ease-dot {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background: var(--accent);
+    transform: translateX(0);
+}
+
+.ease-preview:hover .ease-track { border-color: #333; }
+
+/* ====== EFFECT PRESETS ====== */
+.fx-path {
+    font-size: 10px;
+    color: #666;
+    margin-top: 6px;
+    word-break: break-all;
+    font-family: monospace;
+}
+
+.fx-list {
+    margin-top: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.fx-group {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6a8fc0;
+    margin: 10px 0 4px;
+}
+
+.fx-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #1a1a1a;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    color: #ccc;
+    font-size: 11px;
+    padding: 6px 8px;
+    margin-bottom: 3px;
+    cursor: pointer;
+}
+
+.fx-item:hover {
+    background: #232323;
+    border-color: var(--accent);
+}
+
+.fx-empty {
+    font-size: 11px;
+    color: #666;
+    padding: 10px 0;
+}
+
+/* Favourites list sits above the full list and stays short */
+.fx-fav { max-height: 200px; }
+
+/* Each row holds the preset button plus a star toggle */
+.fx-row {
+    display: flex;
+    align-items: stretch;
+    gap: 3px;
+    margin-bottom: 3px;
+}
+
+.fx-row .fx-item { margin-bottom: 0; flex: 1; }
+
+.fx-star {
+    width: 26px;
+    background: #1a1a1a;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    color: #444;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.fx-star:hover { color: #f2b21e; border-color: #333; }
+.fx-star.on { color: #f2b21e; }
+
+/* ====== NARROW PANEL ======
+   After Effects does not honour MinSize, and on a scaled display the panel can
+   end up around 360 CSS pixels wide. Rather than clipping, the layout tightens
+   up: a slimmer sidebar, smaller padding and single-column button grids. */
+@media (max-width: 400px) {
+    .sidebar { width: 48px; padding: 8px 0; }
+    .nav-btn { font-size: 8px; padding: 6px 2px; }
+    .nav-svg { width: 16px; height: 16px; }
+    .logo { font-size: 8px; }
+
+    .content { padding: 8px 6px; }
+    .section { padding: 8px 0; }
+
+    /* Two-column grids get cramped below this width */
+    .grid { grid-template-columns: 1fr; }
+    .preset-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .val-row { flex-wrap: wrap; }
+    .val-row input { min-width: 0; }
+}
+
+@media (max-width: 330px) {
+    .sidebar { width: 42px; }
+    .nav-btn span:not(.nav-icon) { display: none; }   /* icons only */
+    .preset-grid { grid-template-columns: 1fr; }
+
+    .mini-btn { padding: 3px 5px; font-size: 8px; }
+    .bez-in { flex-basis: 32px; min-width: 32px; }
+    .lib-actions { width: 100%; }
+}
+
+/*
+ * Docked in a narrow column After Effects goes well below anything the
+ * manifest asks for, so there is a floor here too: the sidebar gives up its
+ * label, the curve fields go two per row and every grid is single column.
+ */
+@media (max-width: 270px) {
+    .sidebar { width: 36px; padding: 6px 0; }
+    .logo { display: none; }
+    .nav-svg { width: 15px; height: 15px; }
+
+    .content { padding: 6px 4px; }
+
+    .bez-in { flex-basis: calc(50% - 4px); max-width: none; }
+    .preset-grid { grid-template-columns: 1fr; }
+    .btn-row { flex-wrap: wrap; }
+}
+
+/* Group headers double as collapse toggles */
+.fx-group {
+    cursor: pointer;
+    user-select: none;
+}
+
+.fx-group:hover { color: var(--accent-soft); }
+
+.fx-count {
+    color: #4a4a4a;
+    font-weight: normal;
+}
+
+/* Copy button sitting next to the hex field */
+.hex-copy {
+    width: 26px;
+    flex-shrink: 0;
+    background: #1a1a1a;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    color: #777;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hex-copy svg { width: 13px; height: 13px; }
+.hex-copy:hover { color: #ccc; border-color: #333; }
+
+/* Brief confirmation that the value landed on the clipboard */
+.hex-copy.copied {
+    color: #6fbf73;
+    border-color: #3a6b3d;
+}
+
+/* Custom FPS entry shares a grid cell with the presets above it */
+.fps-custom {
+    margin-top: 0;
+    gap: 4px;
+}
+
+.fps-custom input {
+    flex: 1;
+    min-width: 0;
+}
+
+.fps-custom .btn {
+    flex: 0 0 auto;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Colour button replacing the browser's native picker */
+.picker-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    padding: 3px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.picker-btn:hover { border-color: var(--accent); }
+
+.picker-swatch {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 2px;
+}
+
+/* ====== COLOUR PICKER ======
+   A picker built into the panel rather than the browser's native dialog,
+   whose eyedropper does nothing inside CEP and whose styling clashes. */
+.cp-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.cp-overlay.open { display: flex; }
+
+.cp-panel {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    width: 240px;
+    max-width: 92vw;
+}
+
+.cp-field {
+    display: block;
+    width: 100%;
+    height: 150px;
+    border-radius: 3px;
+    cursor: crosshair;
+}
+
+.cp-hue {
+    display: block;
+    width: 100%;
+    height: 14px;
+    margin-top: 6px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.cp-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.cp-preview {
+    width: 32px;
+    height: 26px;
+    border: 1px solid #333;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.cp-hex {
+    flex: 1;
+    min-width: 0;
+    background: #101010;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    color: #ddd;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 5px 8px;
+    text-align: center;
+}
+
+.cp-rgb label {
+    flex: 1;
+    min-width: 0;
+    font-size: 9px;
+    color: #777;
+    text-align: center;
+}
+
+.cp-rgb input {
+    width: 100%;
+    background: #101010;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    color: #ddd;
+    font-size: 11px;
+    padding: 4px 2px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* Recently used colours, so a shade can be reused without hunting for it */
+.cp-recent {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 8px;
+    min-height: 18px;
+}
+
+.cp-recent button {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.cp-recent button:hover { border-color: var(--accent); }
+
+.cp-actions .btn { flex: 1; }
+
+/* Eyedropper inside the picker - hidden when the browser has no support */
+.cp-eyedrop {
+    width: 28px;
+    height: 26px;
+    flex-shrink: 0;
+    background: #101010;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cp-eyedrop svg { width: 14px; height: 14px; }
+.cp-eyedrop:hover { color: #ddd; border-color: var(--accent); }
+.cp-eyedrop.unsupported { display: none; }
+
+/* Waiting for the helper to start - the click would be too early */
+.cp-eyedrop.picking { color: #ddd; border-color: var(--accent); }
+
+/* Helper is listening: the next click anywhere on screen is the sample */
+.cp-eyedrop.armed {
+    color: #fff;
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    animation: cpEyedropPulse 1s ease-in-out infinite;
+}
+
+@keyframes cpEyedropPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 154, 228, 0.5); }
+    50%      { box-shadow: 0 0 0 3px rgba(74, 154, 228, 0); }
+}
+
+/* Machine-translation caveat under the language switcher */
+.lang-note {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border-left: 2px solid #6a5a2a;
+    background: #1a1710;
+    color: #b9a877;
+}
+
+/*
+ * Label plus two number fields per row. The label column is fixed so the
+ * fields line up down the section; the fields share whatever is left, which
+ * keeps the grid intact in a narrow dock.
+ */
+
+/*
+ * The tick decides whether that colour takes part at all. Without it there is
+ * no way to change only the stroke width and leave both colours alone.
+ */
+
+.btn.full { width: 100%; }
+
+@media (max-width: 270px) {
+
+}
+
+/*
+ * A property carrying keyframes or an expression cannot be written to, so its
+ * field is dimmed. The value still updates as the playhead moves, which is why
+ * it stays readable rather than being disabled outright.
+ */
+
+/* ====== PROPERTY ROWS (Transform, Shape) ====== */
+/*
+ * Laid out like the Transform block in the timeline: keyframe controls, the
+ * property name, then its values. The accent here is green rather than the
+ * panel's usual blue, which is what marks these rows as a live view of the
+ * layer rather than another set of controls.
+ */
+/*
+ * Title and Reset sit together, with the leftover width kept empty on the
+ * right - the same way the rows below pack left. Pushed to the far edge
+ * instead, Reset ends up a long way from the thing it resets as soon as the
+ * panel is docked wide.
+ */
+.prop-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    min-width: 0;
+}
+/*
+ * The title gives way, the Reset link does not. In a narrow column a long
+ * translation of either would otherwise push the other out of the panel -
+ * "Zurücksetzen" is four times the length of "Reset".
+ */
+.prop-head > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 0 1 auto;
+}
+.prop-reset { flex: 0 0 auto; white-space: nowrap; margin-right: auto; }
+.prop-reset {
+    font-size: 10px;
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: normal;
+    letter-spacing: 0;
+}
+.prop-reset:hover { color: var(--accent-soft); text-decoration: underline; }
+
+.prop-list { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
+.prop-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 2px;
+    border-radius: 2px;
+    min-width: 0;
+}
+.prop-row:hover { background: #171717; }
+
+/*
+ * The stopwatch, then the keyframe navigator: previous, the diamond, next.
+ *
+ * Two separate jobs, exactly as in the timeline. The stopwatch switches
+ * animation on and off; the diamond adds or removes a keyframe at the current
+ * time. Merging them meant a second click wiped every keyframe instead of
+ * adding one.
+ */
+.prop-keys { display: flex; align-items: center; gap: 3px; flex: 0 0 auto; }
+.kf-nav, .kf-watch, .kf-dot {
+    color: #666;
+    cursor: pointer;
+    user-select: none;
+    line-height: 1;
+}
+.kf-nav:hover, .kf-dot:hover, .kf-watch:hover { color: #ddd; }
+
+/*
+ * The stopwatch is drawn rather than typed. The stopwatch character renders as
+ * a colour emoji in this Chromium, which ignores CSS colour entirely - and the
+ * whole point of this control is that its colour says whether the property is
+ * animated.
+ */
+/*
+ * Drawn as SVG rather than typed as characters. The stopwatch and diamond
+ * glyphs render as colour emoji in this Chromium, which ignore CSS colour
+ * entirely - and colour is the whole job of these controls.
+ *
+ * Everything inside inherits currentColor, so one rule per state colours the
+ * icon, and the filled variants come from swapping fill on a single path.
+ */
+.kf-watch, .kf-nav, .kf-dot { display: inline-flex; align-items: center; }
+.kf-watch { margin-right: 3px; }
+.kf-watch svg { width: 11px; height: 11px; }
+.kf-nav svg  { width: 7px;  height: 8px; }
+.kf-dot svg  { width: 9px;  height: 9px; }
+
+.kf-watch svg, .kf-nav svg, .kf-dot svg {
+    stroke: currentColor;
+    stroke-width: 1.3;
+    fill: none;
+    overflow: visible;
+}
+.ic-solid { fill: currentColor; stroke: none; }
+
+/* Lit and filled means the property is animated */
+.prop-row.keyed .kf-watch { color: var(--state-key); }
+.prop-row.keyed .kf-watch .ic-face { fill: var(--state-key); }
+.prop-row.keyed .kf-watch .ic-hand { stroke: #101010; }
+.prop-row.expr .kf-watch { color: var(--state-expr); }
+.prop-row.expr .kf-watch .ic-face { fill: var(--state-expr); }
+.prop-row.expr .kf-watch .ic-hand { stroke: #101010; }
+
+/* A solid diamond means a keyframe sits on this exact frame */
+.prop-row.keyed.keyhere .kf-dot .ic-face { fill: currentColor; }
+
+/*
+ * The navigator only means anything once a property is animated, so on a
+ * plain property it fades out and stops responding.
+ */
+.prop-row:not(.keyed) .kf-nav,
+.prop-row:not(.keyed) .kf-dot { color: #2e2e2e; cursor: default; }
+.prop-row:not(.keyed) .kf-nav:hover,
+.prop-row:not(.keyed) .kf-dot:hover { color: #2e2e2e; }
+
+/* Hollow between keyframes, solid when one sits on this frame */
+.prop-row.keyed .kf-dot { color: #7a7a7a; }
+.prop-row.keyed.keyhere .kf-dot { color: var(--state-key); }
+
+/*
+ * A fixed column, so the values line up with each other down the block instead
+ * of drifting with the length of each name. Anything too long is clipped rather
+ * than allowed to push the column about.
+ */
+.prop-name {
+    font-size: 11px;
+    color: #d0d0d0;
+    flex: 0 0 82px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/*
+ * The values sit straight after the name and stop there. The leftover width
+ * stays empty on the right, which is what keeps the block readable when the
+ * panel is docked wide.
+ */
+.prop-vals {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /*
+     * Holds its natural width until something has to give - which only the
+     * fill and stroke rows ever need, since their type dropdown is the one
+     * element wide enough to run out of panel.
+     */
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-right: auto;
+    position: relative;
+}
+
+/*
+ * The value sits in a box with only an underline, the way the mock-up has it.
+ * White and semi-bold rather than the panel's blue, so the number reads as the
+ * layer's own data. The horizontal resize cursor is what says it can be
+ * scrubbed.
+ */
+.prop-num {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 11px;
+    font-family: inherit;
+    text-align: left;
+    min-width: 52px;
+    padding: 1px 4px;
+    border-bottom: 1px solid #3a3a3a;
+    cursor: ew-resize;
+    user-select: none;
+}
+.prop-num:hover { border-bottom-color: var(--accent); background: #101010; }
+.prop-num.scrubbing { border-bottom-color: var(--accent); background: var(--accent-bg); }
+
+.prop-edit {
+    width: 52px;
+    background: #0d0d0d;
+    border: none;
+    border-bottom: 1px solid var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 1px 3px;
+}
+.prop-edit:focus { outline: none; }
+
+/*
+ * The chain keeps Scale proportional, as it does in After Effects.
+ *
+ * Taken out of the flow on purpose: sitting inside the row it would push
+ * Scale's values a dozen pixels further right than every other row, and the
+ * whole point of the fixed name column is that the values line up.
+ */
+.prop-link {
+    position: absolute;
+    right: 100%;
+    margin-right: 3px;
+    display: inline-flex;
+    align-items: center;
+    color: #3a3a3a;
+    cursor: pointer;
+    user-select: none;
+}
+.prop-link svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.3; fill: none; }
+.prop-link.on { color: var(--accent); }
+
+/* A colour value gets a swatch the size of a number box */
+.prop-swatch {
+    display: inline-block;
+    min-width: 52px;
+    height: 15px;
+    border-bottom: 1px solid #3a3a3a;
+    cursor: pointer;
+    background: #333;
+}
+.prop-swatch:hover { border-bottom-color: var(--accent); }
+
+/*
+ * Only an expression takes a row out of play - the expression decides the
+ * value, so writing underneath it changes nothing anyone can see. A keyframed
+ * row stays fully editable, because writing to it drops or updates a keyframe
+ * exactly as the timeline does.
+ */
+.prop-row.expr .prop-num {
+    color: #7a7a7a;
+    font-weight: normal;
+    cursor: default;
+    font-style: italic;
+    border-bottom-color: #262626;
+}
+.prop-row.expr .prop-num:hover { border-bottom-color: #262626; background: none; }
+.prop-row.empty .prop-num { color: #444; cursor: default; }
+.prop-row.empty .prop-swatch { background: #1a1a1a; cursor: default; }
+.prop-row.empty .kf-nav,
+.prop-row.empty .kf-dot,
+.prop-row.empty .kf-watch { color: #333; cursor: default; }
+
+@media (max-width: 330px) {
+    .prop-name { flex-basis: 56px; font-size: 10px; }
+    .prop-num, .prop-swatch { min-width: 38px; }
+    .prop-vals { gap: 5px; }
+    .prop-keys { gap: 3px; }
+    .prop-row { gap: 4px; }
+}
+@media (max-width: 265px) {
+    .prop-name { flex-basis: 44px; font-size: 9px; }
+    .prop-num, .prop-swatch { min-width: 30px; padding: 1px 2px; font-size: 10px; }
+    .prop-vals { gap: 3px; }
+    .kf-nav, .kf-watch { font-size: 8px; }
+    .kf-watch { font-size: 9px; }
+}
+
+/* Which group the shape rows are showing */
+.shape-target {
+    font-size: 10px;
+    color: #7a7a7a;
+    padding: 2px 4px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* A row the selected shape does not have - an ellipse has no roundness */
+.prop-row.na { display: none; }
+
+/*
+ * The two shape blocks sit side by side when the panel is wide enough and fall
+ * back to one under each other when it is not.
+ *
+ * The wrapping is left to flex rather than pinned to a breakpoint: the width a
+ * column needs depends on the language, since a German or Russian property
+ * name is a good deal longer than an English one. A basis lets each column ask
+ * for what it needs and wrap when two of them stop fitting.
+ */
+.shape-cols { display: flex; flex-direction: column; }
+
+/*
+ * Two columns only once they genuinely fit. The decision is measured in
+ * JavaScript rather than written as a media query, because a media query knows
+ * the width of the window and what matters here is the width of a column - and
+ * those stop matching the moment the panel is docked or the sidebar changes
+ * size.
+ */
+.shape-cols.two-up {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0 18px;
+}
+.shape-cols.two-up .shape-col { flex: 1 1 0; min-width: 0; }
+
+/*
+ * Side by side but not roomy: the same compact metrics the narrow panel uses,
+ * applied per column instead of per window.
+ */
+.shape-cols.tight .prop-name { flex-basis: 56px; font-size: 10px; }
+.shape-cols.tight .prop-num,
+.shape-cols.tight .prop-swatch { min-width: 38px; }
+.shape-cols.tight .prop-vals { gap: 5px; }
+.shape-cols.tight .prop-row { gap: 4px; }
+
+/* Fill and stroke: the eyeball, the colour, and which kind of paint it is */
+.prop-check {
+    margin: 0 2px 0 0;
+    cursor: pointer;
+    flex: 0 0 auto;
+    accent-color: var(--accent);
+}
+.prop-type {
+    min-width: 0;
+    flex: 0 1 auto;
+    max-width: 104px;
+    background: #141414;
+    border: 1px solid #333;
+    border-radius: 2px;
+    color: #d0d0d0;
+    font-size: 10px;
+    padding: 1px 2px;
+    cursor: pointer;
+}
+.prop-type:hover { border-color: var(--accent); }
+.prop-type:focus { outline: none; border-color: var(--accent); }
+
+/*
+ * Line cap and line join are pick-one settings that After Effects does not let
+ * you animate, so their rows carry no keyframe controls - just an empty slot
+ * of the same width, to keep the names lined up with the rows above.
+ */
+.prop-keys-empty { flex: 0 0 auto; width: 44px; }
+
+@media (max-width: 330px) {
+    .prop-keys-empty { width: 38px; }
+    .prop-type { max-width: 76px; font-size: 9px; }
+}
+@media (max-width: 265px) {
+    .prop-keys-empty { width: 32px; }
+    .prop-type { max-width: 56px; }
+    .prop-check { width: 11px; height: 11px; }
+}
+
+/*
+ * A gradient swatch is a sample of a ramp, not one colour - clicking it opens
+ * After Effects' gradient editor rather than the panel's colour picker, so it
+ * still behaves like a button. Only a fill or stroke that is not there at all
+ * stops responding.
+ */
+.prop-swatch.no-pick { cursor: default; }
+.prop-swatch.no-pick:hover { border-bottom-color: #3a3a3a; }
+.prop-swatch.is-grad { cursor: pointer; }
+.prop-swatch.is-grad:hover { border-bottom-color: var(--accent); }
+
+/* Nothing selected to act on - the control stays visible but stops offering */
+.prop-reset.disabled { color: #3a3a3a; cursor: default; }
+.prop-reset.disabled:hover { color: #3a3a3a; text-decoration: none; }
+.prop-check:disabled, .prop-type:disabled { opacity: 0.35; cursor: default; }

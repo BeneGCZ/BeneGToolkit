@@ -1,0 +1,35 @@
+﻿# Dependencies
+node_modules/
+
+# Build outputs.
+#
+# "build/" is deliberately NOT here: that folder holds the build scripts that
+# package.json runs, so ignoring it means a fresh clone cannot build at all -
+# including the GitHub Actions runner, which only ever sees a clean checkout.
+build_zip/
+dist/
+tmp/
+updates/
+
+# Output archives
+*.zip
+
+# Certificates, private keys & security credentials (NEVER COMMIT THESE)
+*.pem
+*.p12
+*.key
+.env
+.env.local
+
+# The public key is the one exception. It ships inside the extension so the
+# updater can verify a download before installing it, so the build has to find
+# it in a clean checkout. Without this line "*.pem" swallows it and CI produces
+# a package that cannot check any signature.
+!update-public.pem
+
+# Local development logs & temp files
+*.log
+src/.debug
+.DS_Store
+Thumbs.db
+main.jsx
