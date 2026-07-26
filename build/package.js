@@ -11,7 +11,7 @@ const projectRoot = path.resolve(__dirname, '..');
 // Read version from version.json (or fallback to package.json)
 const versionPath = path.join(projectRoot, 'version.json');
 const packagePath = path.join(projectRoot, 'package.json');
-let version = '1.0.1';
+let version = '1.0.0';
 
 if (fs.existsSync(versionPath)) {
     try {
