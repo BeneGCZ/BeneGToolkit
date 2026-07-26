@@ -44,7 +44,7 @@ var Updater = (function () {
        ================================================================== */
     var CONFIG = {
         // GitHub repository holding the releases
-        owner: "BeneG",
+        owner: "BeneGCZ",
         repo: "BeneGToolkit",
 
         /*

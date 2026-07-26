@@ -950,12 +950,38 @@ try {
         opt.textContent = langs[i].name;
         sel.appendChild(opt);
     }
+    /*
+     * The language is mirrored into settings.json as well as localStorage.
+     *
+     * I18N stores the choice in localStorage, which CEP panels are known to
+     * lose when After Effects restarts - and an update means a restart, which
+     * is precisely when the panel silently reverting to English would be
+     * blamed on the update. settings.json survives both, so it acts as the
+     * fallback: localStorage still wins when it has a value, since it is what
+     * I18N reads before this code gets a chance to run.
+     */
+    var stored = null;
+    try { stored = window.localStorage.getItem("fp_lang"); } catch (e) {}
+
+    if (!stored) {
+        try {
+            var saved = PresetLibrary.loadSettings().lang;
+            if (saved && saved !== I18N.getLanguage()) {
+                I18N.setLanguage(saved);       // also re-applies the DOM
+            }
+        } catch (e) {}
+    }
+
     sel.value = I18N.getLanguage();
 
     sel.addEventListener("change", function () {
         I18N.setLanguage(this.value);
+        try { PresetLibrary.saveSetting("lang", this.value); } catch (e) {}
         setStatus(I18N.t("status.done"));
     });
+
+    // Record the language in use, so the very first restart already has it
+    try { PresetLibrary.saveSetting("lang", I18N.getLanguage()); } catch (e) {}
 })();
 
 // ====== ORGANIZE ======

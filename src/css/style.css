@@ -1411,3 +1411,247 @@ body {
 .prop-reset.disabled { color: #3a3a3a; cursor: default; }
 .prop-reset.disabled:hover { color: #3a3a3a; text-decoration: none; }
 .prop-check:disabled, .prop-type:disabled { opacity: 0.35; cursor: default; }
+
+
+/* ====== UPDATER ======
+   The update dialog. Deliberately built to the same recipe as the colour
+   picker overlay - a fixed backdrop with a bordered card - so an update
+   arriving unannounced still looks like part of the panel rather than
+   something the operating system threw up. */
+.upd-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 3000;                 /* above the colour picker */
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+}
+
+.upd-overlay.open { display: flex; }
+
+.upd-panel {
+    background: #141414;
+    border: 1px solid #333;
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    width: 360px;
+    max-width: 100%;
+    /* The notes area scrolls; the card itself never outgrows the panel */
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+}
+
+.upd-top { flex-shrink: 0; }
+
+.upd-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 3px;
+}
+
+.upd-sub {
+    font-size: 10px;
+    color: #7a7a7a;
+    margin-bottom: 8px;
+}
+
+/* The release notes. Selectable on purpose - the rest of the panel is not,
+   but a version number or a link is worth being able to copy. */
+.upd-notes {
+    flex: 1 1 auto;
+    min-height: 40px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #0d0d0d;
+    border: 1px solid #262626;
+    border-radius: 4px;
+    padding: 8px 9px;
+    font-size: 11px;
+    line-height: 1.55;
+    color: #c4c4c4;
+    user-select: text;
+}
+
+.upd-notes p { margin-bottom: 6px; }
+.upd-notes p:last-child { margin-bottom: 0; }
+
+.upd-notes .upd-h {
+    font-weight: bold;
+    color: #e4e4e4;
+    margin: 8px 0 4px;
+}
+.upd-notes .upd-h:first-child { margin-top: 0; }
+
+.upd-notes .upd-ul {
+    list-style: none;
+    margin: 0 0 6px;
+    padding: 0;
+}
+
+/* A dash rather than a bullet - it lines up with the release notes people
+   actually write on GitHub, which are dash lists. */
+.upd-notes .upd-ul li {
+    position: relative;
+    padding-left: 12px;
+    margin-bottom: 2px;
+}
+.upd-notes .upd-ul li:before {
+    content: "\2013";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+}
+
+.upd-notes code {
+    background: #1c1c1c;
+    border: 1px solid #2a2a2a;
+    border-radius: 2px;
+    padding: 0 3px;
+    font-family: Consolas, monospace;
+    font-size: 10px;
+}
+
+.upd-notes a { color: var(--accent-soft); text-decoration: none; }
+.upd-notes a:hover { text-decoration: underline; }
+
+.upd-notes .upd-empty { color: #6a6a6a; font-style: italic; }
+.upd-notes .upd-ok { color: var(--state-key); }
+.upd-notes .upd-dim {
+    color: #6a6a6a;
+    font-size: 10px;
+    /* A backup path has no spaces to break at, so it is allowed to break
+       anywhere rather than pushing the card wider than the panel. */
+    word-break: break-all;
+}
+
+/* Progress. Hidden until a download starts, so the card does not carry an
+   empty bar around while it is only showing notes. */
+.upd-track {
+    display: none;
+    height: 3px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.upd-track.on { display: block; }
+
+.upd-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width 0.15s linear;
+}
+
+.upd-msg {
+    font-size: 10px;
+    color: #8a8a8a;
+    margin-top: 6px;
+    min-height: 12px;
+    flex-shrink: 0;
+    user-select: text;
+}
+.upd-msg.err { color: #e06a6a; }
+
+.upd-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 9px;
+    flex-shrink: 0;
+}
+
+/* Every button shares the row evenly, and the row wraps rather than
+   squeezing the labels into ellipses on a narrow panel. */
+.upd-actions { flex-wrap: wrap; }
+.upd-actions .btn { flex: 1 1 auto; min-width: 74px; }
+
+.upd-foot {
+    margin-top: 7px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.upd-foot a {
+    font-size: 10px;
+    color: #6a6a6a;
+    text-decoration: none;
+}
+.upd-foot a:hover { color: var(--accent-soft); text-decoration: underline; }
+
+/* ---- Settings page: the update block ---- */
+.upd-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.upd-ver-line {
+    font-size: 10px;
+    color: #7a7a7a;
+    margin-top: 4px;
+    user-select: text;
+}
+.upd-ver-line b { color: #c4c4c4; }
+
+.upd-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #9a9a9a;
+    margin-top: 6px;
+    cursor: pointer;
+}
+.upd-check input { width: 12px; height: 12px; cursor: pointer; }
+
+/* A narrow panel cannot fit label plus button side by side */
+@media (max-width: 380px) {
+    .upd-panel { width: 100%; }
+    .upd-notes { max-height: 220px; }
+}
+
+
+/* ====== UPDATE INDICATOR ======
+   Three places show the same thing so the panel can answer "is there an
+   update?" without the user pressing anything: the version at the foot of
+   the sidebar, a dot on the Settings tab, and the line in Settings. */
+
+/* The dot is positioned against the button, so the button has to be the
+   containing block. It is set here rather than on .nav-btn itself to keep
+   this feature's rules in one place. */
+.nav-btn { position: relative; }
+
+.nav-dot {
+    display: none;
+    position: absolute;
+    top: 7px;
+    right: 11px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    /* A ring in the sidebar colour, so the dot reads as separate from the
+       icon underneath it rather than as part of the artwork */
+    box-shadow: 0 0 0 2px #000;
+}
+
+.nav-dot.on { display: block; }
+
+/* The version at the foot of the sidebar. Inert normally; a button once
+   there is something to open. */
+.fps.has-update {
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: bold;
+}
+.fps.has-update:hover { color: var(--accent-soft); }
+
+/* The Settings line, when what it says is an available version rather than
+   the date of the last check */
+.upd-ver-line.is-update { color: var(--accent); }

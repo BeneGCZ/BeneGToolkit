@@ -17,16 +17,29 @@ and calls the same function the button would, so behaviour stays identical.
 
 INSTALLATION
 
-1. Copy every .jsx file in this folder, including _BeneGToolkit_Panel.jsx,
-   into the After Effects Scripts folder.
+1. Install the files. The panel does this for you:
 
-   Per-user (no admin rights needed, recommended):
-     Windows:  %APPDATA%\Adobe\After Effects\<version>\Scripts
-     macOS:    ~/Library/Preferences/Adobe/After Effects/<version>/Scripts
+     Settings > Shortcut scripts > Install into After Effects
 
-   System-wide:
-     Windows:  C:\Program Files\Adobe\Adobe After Effects <version>\Support Files\Scripts
-     macOS:    /Applications/Adobe After Effects <version>/Scripts
+   It copies the current set into every version of After Effects you have,
+   creates the Scripts folder when it does not exist yet, and needs no
+   administrator rights. From then on updates keep the scripts current,
+   including ones added in a later release.
+
+   To do it by hand instead, copy every .jsx file in this folder, including
+   _BeneGToolkit_Panel.jsx, into the After Effects Scripts folder:
+
+     Per-user (no admin rights needed, recommended):
+       Windows:  %APPDATA%\Adobe\After Effects\<version>\Scripts
+       macOS:    ~/Library/Preferences/Adobe/After Effects/<version>/Scripts
+
+     System-wide:
+       Windows:  C:\Program Files\Adobe\Adobe After Effects <version>\Support Files\Scripts
+       macOS:    /Applications/Adobe After Effects <version>/Scripts
+
+   Use one or the other, not both. A set in the system-wide folder appears in
+   the Scripts menu alongside the per-user one the panel manages, and the
+   duplicates are indistinguishable there.
 
 2. Restart After Effects. The Scripts folder is only scanned at startup.
 
@@ -44,7 +57,6 @@ INSTALLATION
 
    Nothing is pre-assigned on purpose - After Effects has hundreds of default
    shortcuts and any choice made here would likely collide with one you use.
-
 
 THE SCRIPTS
 

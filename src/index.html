@@ -35,13 +35,17 @@
                 <button class="nav-btn" data-page="settings">
                     <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg></span>
                     <span data-i18n="nav.settings">Settings</span>
+                    <!-- Lit by the updater when a new version is waiting -->
+                    <span class="nav-dot" id="navUpdateDot"></span>
                 </button>
                 <button class="nav-btn" data-page="guide">
                     <span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5v-15Z"/><path d="M4 19.5A1.5 1.5 0 0 1 5.5 18H19v3H5.5A1.5 1.5 0 0 1 4 19.5Z"/><path d="M8 7.5h7M8 11h5"/></svg></span>
                     <span data-i18n="nav.guide">Guide</span>
                 </button>
             </div>
-            <div class="fps">v1.0</div>
+            <!-- Filled in from the manifest by the updater, and turns into a
+                 clickable "update waiting" marker when there is one -->
+            <div class="fps" id="sidebarVersion" title=""></div>
         </div>
 
         <!-- ====== CONTENT ====== -->
@@ -558,6 +562,56 @@
                     <p class="about" style="margin-top:6px;" data-i18n="settings.languageAbout">Platí pro celý panel včetně hlášek.</p>
                     <p class="about lang-note" data-i18n="settings.langNote"></p>
                 </div>
+                <!-- Updates. The dialog itself is built by js/updater.js -->
+                <div class="section">
+                    <div class="section-title" data-i18n="upd.sectionTitle">Aktualizace</div>
+                    <p class="about" data-i18n="upd.about"></p>
+
+                    <div class="upd-ver-line">
+                        <span data-i18n="upd.installedVersion">Nainstalovaná verze</span>:
+                        <b id="updCurrentVersion">—</b>
+                    </div>
+
+                    <div class="upd-row">
+                        <button id="updCheckNow" class="btn" style="flex:1;"
+                                data-i18n="upd.checkNow" data-i18n-title="upd.tipCheckNow">Zkontrolovat aktualizace</button>
+                        <button id="updShowNotes" class="mini-btn"
+                                data-i18n="upd.whatsNew" data-i18n-title="upd.tipWhatsNew">Co je nového</button>
+                    </div>
+
+                    <div id="updStatusLine" class="upd-ver-line"></div>
+
+                    <!-- Only visible when an update is waiting, so the dialog
+                         can be reopened after it was dismissed -->
+                    <button id="updOpenWaiting" class="btn primary" style="width:100%;margin-top:6px;display:none;"></button>
+
+                    <label class="upd-check" data-i18n-title="upd.tipAutoCheck">
+                        <input type="checkbox" id="updAutoCheck" />
+                        <span data-i18n="upd.autoCheck">Kontrolovat automaticky při spuštění</span>
+                    </label>
+
+                    <label class="upd-check" data-i18n-title="upd.tipPrerelease">
+                        <input type="checkbox" id="updAllowPrerelease" />
+                        <span data-i18n="upd.allowPrerelease">Nabízet i beta verze</span>
+                    </label>
+
+                    <p class="about" style="margin-top:8px;">
+                        <a href="#" id="updRepoLink" data-i18n="upd.allReleases">Všechny verze na GitHubu</a>
+                    </p>
+                </div>
+
+                <!-- Shortcut scripts. Written into After Effects itself, so
+                     this is a button rather than something an update does. -->
+                <div class="section">
+                    <div class="section-title" data-i18n="upd.scriptsTitle">Scripty pro zkratky</div>
+                    <p class="about" data-i18n="upd.scriptsAbout"></p>
+
+                    <button id="updInstallScripts" class="btn" style="width:100%;margin-top:6px;"
+                            data-i18n="upd.installScripts" data-i18n-title="upd.tipInstallScripts">Nainstalovat do After Effects</button>
+
+                    <div id="updScriptsLine" class="upd-ver-line"></div>
+                </div>
+
                 <div class="section">
                     <div class="section-title" data-i18n="settings.about">O panelu</div>
                     <p class="about" data-i18n="settings.aboutText">BeneG Toolkit v1.0 — editor easing křivek s podporou .flow formátu, knihovnou presetů a nástroji pro organizaci projektu.</p>
@@ -649,6 +703,16 @@
                 </div>
 
                 <!-- TIPS -->
+                <!-- UPDATES -->
+                <div class="section">
+                    <div class="section-title" data-i18n="guide.updatesTitle">Updates</div>
+                    <p class="about" data-i18n="guide.updatesHow"></p>
+                    <p class="about" data-i18n="guide.updatesIndicator"></p>
+                    <p class="about" data-i18n="guide.updatesChoices"></p>
+                    <p class="about" data-i18n="guide.updatesKept"></p>
+                </div>
+
+                <!-- TIPS -->
                 <div class="section">
                     <div class="section-title" data-i18n="guide.tipsTitle">Tips</div>
                     <p class="about" data-i18n="guide.tipUndo"></p>
@@ -665,6 +729,7 @@
                     <p class="about" data-i18n="guide.troubleHidden"></p>
                     <p class="about" data-i18n="guide.troubleNothing"></p>
                     <p class="about" data-i18n="guide.troubleSize"></p>
+                    <p class="about" data-i18n="guide.troubleUpdate"></p>
                 </div>
 
                 <div class="section">
@@ -717,5 +782,15 @@
     <script src="js/library.js"></script>
     <script src="js/main.js"></script>
     <script src="js/tools.js"></script>
+    <!--
+        Last on purpose. The updater reads and writes settings.json through
+        PresetLibrary, which main.js initialises, and it writes to the status
+        line that main.js defines.
+    -->
+    <script src="js/updater.js"></script>
+    <script>
+        // Kicks off the update check once every module above has loaded
+        try { Updater.init(cs); } catch (e) { }
+    </script>
 </body>
 </html>

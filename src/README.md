@@ -93,6 +93,11 @@ and frame blending switches, cache purging.
 
 **Organize** — sorts every project item into folders by type in one undo step.
 
+**Shortcut scripts** — CEP panels only receive keystrokes while focused, so the
+`scripts/` folder holds a standalone script per action that After Effects can
+bind a shortcut to. Settings → Shortcut scripts installs them into every
+installed version of After Effects, and updates keep them current.
+
 **Updates** — the panel checks GitHub once a day and offers any new version with
 its release notes, which can be installed straight away, postponed for a day or
 skipped. Presets, libraries, the last used curve and every other setting live
