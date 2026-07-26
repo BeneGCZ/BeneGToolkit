@@ -33,3 +33,4 @@ src/.debug
 .DS_Store
 Thumbs.db
 main.jsx
+cert_base64.txt
