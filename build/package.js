@@ -6,7 +6,7 @@ console.log('Packaging build zip...');
 
 // Načtení verze z version.json
 const versionPath = path.join(__dirname, '../version.json');
-let version = '1.1.0';
+let version = '1.0.0';
 if (fs.existsSync(versionPath)) {
     try {
         const data = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
