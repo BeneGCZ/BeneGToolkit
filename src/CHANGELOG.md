@@ -8,7 +8,7 @@ for yourself: what changed, what got fixed, what they need to do differently.
 Keep the heading format `## [version] - date`. The version has to match
 `ExtensionBundleVersion` in `CSXS/manifest.xml`.
 
-## [1.1.0] - 2026-07-26
+## [1.0.0] - 2026-07-26
 
 ### Added
 - **Automatic updates.** The panel checks GitHub once a day and offers any new

@@ -49,7 +49,7 @@ var Updater = (function () {
 
         /*
          * Which asset to download. A substring match against the asset
-         * filename, so "BeneGToolkit" matches BeneGToolkit-1.1.0.zip.
+         * filename, so "BeneGToolkit" matches BeneGToolkit-1.0.0.zip.
          * When nothing matches, the first .zip asset is used; when the
          * release has no assets at all, the source zipball is used instead,
          * which means tagging a release is enough to ship an update.
