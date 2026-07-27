@@ -97,23 +97,36 @@ folder called `BeneGToolkit`.
 
 ### Step 3 — Copy it into the extensions folder
 
-Move the whole `BeneGToolkit` folder here:
+The whole `BeneGToolkit` folder goes into one of two places. Either works —
+pick whichever suits you.
 
-**Windows**
-
-```
-C:\Users\<YourName>\AppData\Roaming\Adobe\CEP\extensions\
-```
-
-**macOS**
+**Just for you.** No administrator rights needed.
 
 ```
-~/Library/Application Support/Adobe/CEP/extensions/
+Windows   C:\Users\<YourName>\AppData\Roaming\Adobe\CEP\extensions\
+macOS     ~/Library/Application Support/Adobe/CEP/extensions/
 ```
 
-If the `CEP` or `extensions` folders are not there, create them. The path has to
-end up as `...\CEP\extensions\BeneGToolkit\`, with `index.html` and the `CSXS`
-folder directly inside.
+On Windows you can paste `%APPDATA%\Adobe\CEP\extensions` straight into the
+Explorer address bar instead of clicking your way through a hidden folder.
+
+**For everyone on the machine.** Windows and macOS will ask for administrator
+rights when you copy the folder in.
+
+```
+Windows   C:\Program Files (x86)\Common Files\Adobe\CEP\extensions\
+macOS     /Library/Application Support/Adobe/CEP/extensions/
+```
+
+If the `CEP` or `extensions` folders are not there, create them. Either way the
+path has to end up as `...\CEP\extensions\BeneGToolkit\`, with `index.html` and
+the `CSXS` folder directly inside.
+
+One thing to know about the system-wide option: the panel updates itself by
+rewriting its own files, so it needs write access to wherever it sits. In a
+system folder that usually stays with the account that installed it and updates
+carry on working — but not on every machine, and not for other users of the same
+computer. See the troubleshooting note below if you hit it.
 
 ### Step 4 — Open it
 
@@ -135,6 +148,13 @@ CSXS.12, and restart After Effects fully. Newer versions of After Effects may
 use a higher CSXS number — if 11 and 12 do not do it, try 13 as well. Otherwise
 check the folder is nested correctly: `extensions\BeneGToolkit\index.html`, not
 `extensions\BeneGToolkit\BeneGToolkit\index.html`.
+
+**An update will not install.**
+If the panel reports that it cannot write to its own folder, it is installed
+system-wide under an account that no longer has write access to it. Download the
+new version from the [Releases page](../../releases/latest) and replace the
+folder by hand — you will be asked for administrator rights, and that is all it
+needs. Installing per-user instead avoids the situation for good.
 
 **"No active composition."**
 Open a composition in the timeline first. Having it selected in the Project
