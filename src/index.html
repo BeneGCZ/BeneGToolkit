@@ -4,8 +4,54 @@
     <meta charset="utf-8" />
     <title>BeneG Toolkit</title>
     <link rel="stylesheet" href="css/style.css" />
+
 </head>
 <body>
+    <!--
+      Runs as the first thing in the body, before any panel markup is parsed,
+      so the fallbacks are in place at first paint and nothing visibly shifts.
+      It needs a laid-out parent to measure against, which is why it sits here
+      and not in the head.
+
+      After Effects 2020 runs CEP 9 on Chromium 66, older than two layout
+      features this panel leans on. Flex gap needs 84 and cannot be
+      feature-queried - @supports (row-gap: 1px) answers yes on 66, because
+      grid gap genuinely does work there - so it has to be measured.
+      aspect-ratio needs 88.
+
+      Note which way each test fails. Claiming flex gap is missing when it is
+      not would add the fallback margins on top of a working gap and space the
+      whole panel out twice, so an inconclusive measurement is treated as
+      support. Getting it wrong the other way just leaves the panel as it
+      already was.
+    -->
+    <script>
+    (function () {
+        var d = document, root = d.documentElement, add = [];
+
+        try {
+            var box = d.createElement("div");
+            box.style.cssText = "display:flex;flex-direction:column;row-gap:10px;" +
+                                "position:absolute;visibility:hidden;width:10px";
+            box.appendChild(d.createElement("div"));
+            box.appendChild(d.createElement("div"));
+            (d.body || root).appendChild(box);
+            var h = box.scrollHeight;
+            box.parentNode.removeChild(box);
+            // 10 means gap applied, 0 means nothing was measured at all
+            if (h > 0 && h !== 10) add.push("no-flexgap");
+        } catch (e) { /* leave it on the modern path */ }
+
+        try {
+            if (!(window.CSS && CSS.supports && CSS.supports("aspect-ratio", "1 / 1"))) {
+                add.push("no-aspectratio");
+            }
+        } catch (e) { add.push("no-aspectratio"); }
+
+        if (add.length) root.className += (root.className ? " " : "") + add.join(" ");
+    })();
+    </script>
+
     <div class="app">
 
         <!-- ====== SIDEBAR ====== -->

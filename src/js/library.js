@@ -98,6 +98,27 @@ var PresetLibrary = (function () {
     function fs() { return (typeof require === "function") ? require("fs") : null; }
     function pathMod() { return (typeof require === "function") ? require("path") : null; }
 
+    /*
+     * mkdirSync(dir, {recursive:true}) needs Node 10.12; CEP 9 (After Effects
+     * 2019/2020) ships an older Node that ignores the option. One level under
+     * an existing parent still works there, but this is safe on every version.
+     */
+    function ensureDirCompat(dir) {
+        var f = (typeof require === "function") ? require("fs") : null;
+        var p = (typeof require === "function") ? require("path") : null;
+        if (!f || !p || !dir) return false;
+        try {
+            if (f.existsSync(dir)) return true;
+            var parent = p.dirname(dir);
+            if (parent && parent !== dir) ensureDirCompat(parent);
+            f.mkdirSync(dir);
+            return true;
+        } catch (e) {
+            try { return f.existsSync(dir); } catch (e2) { return false; }
+        }
+    }
+
+
     // Resolves the panel data folder through CSInterface
     function resolveStorePath(cs) {
         try {
@@ -106,7 +127,7 @@ var PresetLibrary = (function () {
             var base = cs.getSystemPath(SystemPath.USER_DATA);
             var dir = p.join(base, "BeneGToolkit");
 
-            if (!fs().existsSync(dir)) fs().mkdirSync(dir, { recursive: true });
+            ensureDirCompat(dir);
             return p.join(dir, "presets.json");
         } catch (e) {
             return null;
@@ -712,6 +733,26 @@ var ColorLibrary = (function () {
 
     function fs() { return (typeof require === "function") ? require("fs") : null; }
 
+    /*
+     * mkdirSync(dir, {recursive:true}) needs Node 10.12; CEP 9 (After Effects
+     * 2019/2020) ships an older Node that ignores the option. One level under
+     * an existing parent still works there, but this is safe on every version.
+     */
+    function ensureDirCompat(dir) {
+        var f = (typeof require === "function") ? require("fs") : null;
+        var p = (typeof require === "function") ? require("path") : null;
+        if (!f || !p || !dir) return false;
+        try {
+            if (f.existsSync(dir)) return true;
+            var parent = p.dirname(dir);
+            if (parent && parent !== dir) ensureDirCompat(parent);
+            f.mkdirSync(dir);
+            return true;
+        } catch (e) {
+            try { return f.existsSync(dir); } catch (e2) { return false; }
+        }
+    }
+
     function ensurePath() {
         if (storePath) return;
         try {
@@ -719,7 +760,7 @@ var ColorLibrary = (function () {
             var p = require("path");
             var base = cs.getSystemPath(SystemPath.USER_DATA);
             var dir = p.join(base, "BeneGToolkit");
-            if (!fs().existsSync(dir)) fs().mkdirSync(dir, { recursive: true });
+            ensureDirCompat(dir);
             storePath = p.join(dir, "colors_palette.json");
         } catch (e) { storePath = null; }
     }

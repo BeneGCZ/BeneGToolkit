@@ -1211,6 +1211,25 @@ function runOrganizeNow(logEl) {
     var MAX_SIZE = 900;
 
     /*
+     * aspect-ratio is Chromium 88 and After Effects 2020 runs 66, so there the
+     * default editor collapsed to a flat strip - every curve read as squashed
+     * next to the same values in Flow. When the check in index.html finds the
+     * property missing, the height is matched to the measured width by hand.
+     * Only the default size needs this: a dragged size pins both dimensions.
+     */
+    var noAspect = /(^|\s)no-aspectratio(\s|$)/.test(
+        document.documentElement.className || ""
+    );
+
+    function squareFallback() {
+        if (!noAspect || wrap.style.width) return;
+        var w = wrap.clientWidth;
+        if (w <= 0) return;
+        wrap.style.height = Math.min(w, MAX_SIZE) + "px";
+        redraw();
+    }
+
+    /*
      * The editor is always square, so dragging changes width and height
      * together. Without an explicit size it simply fills the panel width
      * (aspect-ratio keeps it square); once the user drags, both dimensions
@@ -1239,6 +1258,7 @@ function runOrganizeNow(logEl) {
         wrap.style.height = "";
         wrap.style.marginLeft = "";
         wrap.style.marginRight = "";
+        squareFallback();
         redraw();
     }
 
@@ -1264,7 +1284,7 @@ function runOrganizeNow(logEl) {
             attempts++;
             var saved = null;
             try { saved = PresetLibrary.loadSettings().curveSize; } catch (e) {}
-            if (!saved) return;
+            if (!saved) { squareFallback(); return; }
 
             var avail = wrap.parentNode ? wrap.parentNode.clientWidth : 0;
             if (avail > 0) {
@@ -1313,7 +1333,7 @@ function runOrganizeNow(logEl) {
     // Keep a pinned square from overflowing when the panel gets narrower
     if (typeof window !== "undefined") {
         window.addEventListener("resize", function () {
-            if (!wrap.style.width) return;
+            if (!wrap.style.width) { squareFallback(); return; }
             applySize(parseInt(wrap.style.width, 10));
         });
     }

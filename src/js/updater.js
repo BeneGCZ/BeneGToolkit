@@ -94,6 +94,8 @@ var Updater = (function () {
     function fs() { return req("fs"); }
     function pathMod() { return req("path"); }
     function https() { return req("https"); }
+    function http() { return req("http"); }
+    function urlMod() { return req("url"); }
     function zlib() { return req("zlib"); }
 
     function nodeReady() {
@@ -246,9 +248,33 @@ var Updater = (function () {
         var headers = { "User-Agent": UA };
         if (opts.json) headers["Accept"] = "application/vnd.github+json";
 
+        /*
+         * https.get(url, options, callback) - the three-argument form - only
+         * exists from Node 10.9. CEP 9, which is what After Effects 2019 and
+         * 2020 run, ships an older Node: there the second argument is taken
+         * as the callback and the real one is dropped, so the response never
+         * reaches us and the dialog sits on "Checking for updates" forever.
+         * Parsing the URL ourselves and handing over a single options object
+         * is the call every Node version has understood since 0.10.
+         */
+        var parsed;
+        try { parsed = urlMod().parse(url); }
+        catch (e) { once(e); return; }
+
+        var mod = (parsed.protocol === "http:") ? http() : https();
+        if (!mod) { once(new Error("no network module")); return; }
+
+        var reqOpts = {
+            protocol: parsed.protocol,
+            hostname: parsed.hostname,
+            port: parsed.port,
+            path: parsed.path,
+            headers: headers
+        };
+
         var request;
         try {
-            request = https().get(url, { headers: headers }, function (res) {
+            request = mod.get(reqOpts, function (res) {
                 var code = res.statusCode;
 
                 // Follow redirects - asset URLs always send one
@@ -560,11 +586,26 @@ var Updater = (function () {
     /* ==================================================================
        FILE HELPERS
        ================================================================== */
+    /*
+     * mkdirSync(dir, {recursive:true}) needs Node 10.12. On CEP 9 the options
+     * object is read as a file mode instead, no parent folder is created, and
+     * the call throws ENOENT - which is why pressing Install on After Effects
+     * 2020 did nothing at all: this returned false and the caller gave up in
+     * silence. Walking up the path by hand works on every Node.
+     */
     function ensureDir(dir) {
+        var f = fs(), p = pathMod();
+        if (!f || !p || !dir) return false;
         try {
-            if (!fs().existsSync(dir)) fs().mkdirSync(dir, { recursive: true });
+            if (f.existsSync(dir)) return true;
+            var parent = p.dirname(dir);
+            if (parent && parent !== dir) ensureDir(parent);
+            f.mkdirSync(dir);
             return true;
-        } catch (e) { return false; }
+        } catch (e) {
+            // A parallel create is fine - only a still-missing folder is a failure
+            try { return f.existsSync(dir); } catch (e2) { return false; }
+        }
     }
 
     function isKept(rel) {

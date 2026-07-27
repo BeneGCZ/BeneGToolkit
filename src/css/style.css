@@ -1068,7 +1068,17 @@ body {
 .cp-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    /*
+     * Written out longhand on purpose. The inset shorthand is Chromium 87,
+     * and After Effects 2020 runs Chromium 66 - there the whole line was
+     * dropped, leaving a fixed box with no offsets and no size. The dialog
+     * did open, it just collapsed to nothing at its static position, which
+     * is why it only became visible after switching pages reflowed it.
+     */
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
     align-items: center;
@@ -1621,7 +1631,10 @@ body {
 .upd-overlay {
     display: none;
     position: fixed;
-    inset: 0;
+    top: 0;                        /* longhand, not inset - see .cp-overlay */
+    right: 0;
+    bottom: 0;
+    left: 0;
     background: rgba(0, 0, 0, 0.62);
     z-index: 3000;                 /* above the colour picker */
     align-items: center;
@@ -1855,3 +1868,90 @@ body {
 /* The Settings line, when what it says is an available version rather than
    the date of the last check */
 .upd-ver-line.is-update { color: var(--accent); }
+
+
+/* ======================================================================
+   FALLBACKS FOR OLDER CHROMIUM (After Effects 2019 / 2020, CEP 9)
+   ======================================================================
+
+   The manifest offers this panel to After Effects 16.0 and up, and the
+   older hosts in that range run Chromium 66. Two layout features used
+   throughout the panel land later than that:
+
+     flex gap      Chromium 84
+     aspect-ratio  Chromium 88
+
+   Grid gap does work on 66, which is exactly what makes flex gap so easy
+   to miss - @supports (row-gap: 1px) answers yes, so the panel looked
+   correct to every feature query while every flex row was silently
+   collapsing. The script in index.html measures it instead and sets
+   .no-flexgap / .no-aspectratio on <html> before the first paint.
+
+   Nothing below is read on a current After Effects: without those classes
+   these selectors never match, so the modern path stays exactly as it was.
+   ====================================================================== */
+
+/* --- Columns: space goes on the top of every child but the first ------- */
+.no-flexgap .nav > .nav-btn + .nav-btn { margin-top: 6px; }
+.no-flexgap .nav-btn > * + * { margin-top: 4px; }
+.no-flexgap .preset-card > * + * { margin-top: 2px; }
+.no-flexgap .prop-list > * + * { margin-top: 1px; }
+
+/* --- Rows that never wrap: same idea, on the left --------------------- */
+.no-flexgap .curve-resize > * + * { margin-left: 3px; }
+.no-flexgap .check-row > * + * { margin-left: 6px; }
+.no-flexgap .lib-switcher > * + * { margin-left: 4px; }
+.no-flexgap .footer-row > * + * { margin-left: 10px; }
+.no-flexgap .fx-row > * + * { margin-left: 3px; }
+.no-flexgap .cp-row > * + * { margin-left: 6px; }
+.no-flexgap .prop-head > * + * { margin-left: 14px; }
+.no-flexgap .prop-row > * + * { margin-left: 6px; }
+.no-flexgap .prop-keys > * + * { margin-left: 3px; }
+.no-flexgap .prop-vals > * + * { margin-left: 8px; }
+.no-flexgap .upd-row > * + * { margin-left: 6px; }
+.no-flexgap .upd-check > * + * { margin-left: 5px; }
+
+/*
+   Rows that wrap need the spacing on every child instead, because the
+   first item of a second row has no preceding sibling to hang it on. The
+   container pulls the resulting outer edge back in, so a wrapped row ends
+   up occupying the same box it does with real gap.
+*/
+.no-flexgap .bezier-inputs,
+.no-flexgap .val-row,
+.no-flexgap .lib-header,
+.no-flexgap .lib-actions { margin-right: -4px; margin-bottom: -4px; }
+.no-flexgap .bezier-inputs > *,
+.no-flexgap .val-row > *,
+.no-flexgap .lib-header > *,
+.no-flexgap .lib-actions > * { margin-right: 4px; margin-bottom: 4px; }
+
+.no-flexgap .btn-row,
+.no-flexgap .solid-bar,
+.no-flexgap .upd-actions { margin-right: -6px; margin-bottom: -6px; }
+.no-flexgap .btn-row > *,
+.no-flexgap .solid-bar > *,
+.no-flexgap .upd-actions > * { margin-right: 6px; margin-bottom: 6px; }
+
+.no-flexgap .cp-recent { margin-right: -3px; margin-bottom: -3px; }
+.no-flexgap .cp-recent > * { margin-right: 3px; margin-bottom: 3px; }
+
+/* --- The narrow-panel overrides need matching fallbacks --------------- */
+@media (max-width: 330px) {
+    .no-flexgap .prop-vals > * + * { margin-left: 5px; }
+    .no-flexgap .prop-keys > * + * { margin-left: 3px; }
+    .no-flexgap .prop-row > * + * { margin-left: 4px; }
+}
+
+@media (max-width: 265px) {
+    .no-flexgap .prop-vals > * + * { margin-left: 3px; }
+}
+
+/*
+   Squares without aspect-ratio. The padding trick works because the whole
+   panel is border-box and the only child of a swatch is the absolutely
+   positioned delete button, so nothing is left to push the box open.
+   The curve editor is handled in main.js instead - it is resizable, and a
+   measured height is easier to reconcile with a dragged one.
+*/
+.no-aspectratio .swatch { height: 0; padding-bottom: 100%; }
