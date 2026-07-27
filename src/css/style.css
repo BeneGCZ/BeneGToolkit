@@ -13,6 +13,57 @@
     --accent-bg:   #16283a;
     --state-key:   #3cc76a;   /* the property is keyframed */
     --state-expr:  #c48ae8;   /* the property has an expression */
+
+    /*
+     * ---- Motion ----
+     *
+     * Three rules hold this together, and they are the difference between
+     * animation that feels designed and animation that feels applied.
+     *
+     * 1. Everything is a transition, never a keyframe animation. A keyframe
+     *    animation restarts from its first frame every time it is retriggered,
+     *    so clicking two tabs quickly plays the entrance twice from scratch.
+     *    A transition interpolates from wherever the property happens to be
+     *    right now, which means a movement can be interrupted, reversed and
+     *    redirected mid-flight and still arrive smoothly. Interruptibility is
+     *    most of what people are describing when they call an interface fluid.
+     *
+     * 2. Only transform and opacity move. Both are handled by the compositor,
+     *    so they never trigger layout or paint. Animating width, height, top
+     *    or margin drags the whole layout engine into every frame, and inside
+     *    a CEP panel sharing a thread with After Effects that is exactly the
+     *    stutter we spent the last release removing.
+     *
+     * 3. The curves overshoot slightly, then settle. Real objects have mass;
+     *    they do not stop dead on arrival. --ease-spring carries a small
+     *    overshoot for things that appear, --ease-out decelerates cleanly for
+     *    things that move or leave. Nothing uses ease-in-out, which is what
+     *    makes so much web motion feel like a slideshow.
+     */
+    --t-press: 110ms;   /* a control acknowledging the pointer */
+    --t-move:  200ms;   /* something travelling to a new place */
+    --t-enter: 260ms;   /* something arriving or departing */
+
+    --ease-out:    cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
+
+    /* Kept so older rules in this file keep working */
+    --t-fast:  var(--t-press);
+    --t-mid:   var(--t-move);
+    --t-slow:  var(--t-enter);
+    --ease:    var(--ease-out);
+}
+
+/*
+ * Anyone who has asked their system for less movement gets none of it. The
+ * panel still changes state, it just stops animating between states.
+ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -80,12 +131,57 @@ body {
     align-items: center;
     gap: 4px;
     font-size: 10px;
-    transition: all 0.15s;
+    /*
+     * Named rather than "all": the browser only watches what actually moves,
+     * and a layout change elsewhere cannot accidentally animate this button.
+     */
+    transition: background var(--t-mid) var(--ease),
+                color var(--t-mid) var(--ease);
 }
 
 .nav-btn:hover { background: #141414; color: #b4b4b4; }
 
+/*
+ * The one piece of motion in the panel worth calling a signature.
+ *
+ * Instead of a highlight switching off under one button and on under another,
+ * a single marker slides from the old button to the new one. The eye follows
+ * an object that moves; it has to re-find one that teleports. This is the
+ * cheapest possible version of what makes an Apple interface feel continuous -
+ * the same thing persisting through a change of state rather than being
+ * destroyed and recreated.
+ *
+ * Its position comes from main.js as a translate, so travelling the length of
+ * the sidebar costs the compositor one transform and nothing else.
+ */
+.nav-indicator {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 60px;
+    margin-left: -30px;
+    border-radius: 6px;
+    background: var(--accent-bg);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+    /* Kept on its own compositor layer - it is the one thing that moves often */
+    will-change: transform;
+    transition: transform var(--t-move) var(--ease-spring),
+                height var(--t-move) var(--ease-out),
+                opacity var(--t-move) var(--ease-out);
+}
+.nav-indicator.ready { opacity: 1; }
+
+.nav { position: relative; }
+
+/*
+ * The buttons sit above the marker, and the active one keeps its own
+ * background transparent so the marker is what is seen behind it.
+ */
+.nav-btn { position: relative; z-index: 1; }
 .nav-btn.active { color: var(--accent); }
+.nav-btn.active:hover { background: transparent; }
 
 .nav-icon {
     display: flex;
@@ -100,7 +196,7 @@ body {
     width: 20px;
     height: 20px;
     display: block;
-    transition: transform 0.15s ease, opacity 0.15s ease;
+    transition: transform var(--t-mid) var(--ease), opacity var(--t-mid) var(--ease);
     opacity: 0.75;
 }
 
@@ -145,8 +241,71 @@ body {
 .val-row { flex-wrap: wrap; }
 .solid-bar { flex-wrap: wrap; }
 
+/*
+ * Pages swap instantly and then settle.
+ *
+ * display cannot be transitioned, so the incoming page is shown at once and
+ * animated afterwards - which is also the honest order: the panel is already
+ * there, it is only catching up with itself. Four pixels and a fade is enough
+ * to read as a change of place. More than that and switching tabs starts to
+ * feel like waiting.
+ *
+ * transform and opacity only, so this never touches layout - and the
+ * measurement in fit() still sees the final width on the first frame.
+ */
+/*
+ * Pages arrive rather than appear.
+ *
+ * display cannot be transitioned, so the page is shown first and moved
+ * afterwards - main.js adds .shown on the next frame, which is what starts
+ * the transition. Doing it this way rather than with @keyframes is the whole
+ * point: switch tabs twice in quick succession and the second movement picks
+ * up from wherever the first one had reached, instead of snapping back to the
+ * start and replaying.
+ *
+ * Six pixels, and the content settles a fraction after the container - just
+ * enough parallax to read as depth rather than as a slide.
+ */
 .page { display: none; }
-.page.active { display: block; }
+.page.active {
+    display: block;
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: opacity var(--t-enter) var(--ease-out),
+                transform var(--t-enter) var(--ease-out);
+}
+
+/*
+ * The arrival is expressed as a starting position that gets taken away, not
+ * as an end position that gets added.
+ *
+ * It matters which way round this is. The resting state is the plain one, so
+ * a page with no JavaScript running - or one shown by something that never
+ * heard of this animation - is simply visible. Written the other way round,
+ * with the settled state on a class, any failure leaves a blank panel.
+ */
+.page.active.enter-start {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+    transition: none;
+}
+
+/*
+ * The sections lag the page by a hair. One shared delay, not a per-item
+ * stagger - a cascade down seven sections is the kind of flourish you notice
+ * on the second use and resent by the tenth.
+ */
+.page.active .section {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition: opacity var(--t-enter) var(--ease-out) 40ms,
+                transform var(--t-enter) var(--ease-out) 40ms;
+}
+.page.active.enter-start .section {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+    transition: none;
+}
 
 .section {
     margin-bottom: 12px;
@@ -208,7 +367,7 @@ body {
     height: 3px;
     border-radius: 50%;
     background: #555;
-    transition: background 0.15s;
+    transition: background var(--t-mid) var(--ease);
 }
 
 .curve-resize:hover span,
@@ -306,10 +465,28 @@ body {
     border-radius: 3px;
     cursor: pointer;
     font-size: 11px;
-    transition: background 0.1s;
+    transition: background var(--t-press) var(--ease-out),
+                transform var(--t-move) var(--ease-spring);
 }
 .btn:hover { background: #282828; }
-.btn:active { background: #141414; }
+/*
+ * The press is felt more than seen: a single pixel of travel, no shadow, no
+ * bounce. It confirms the click landed on a panel where most buttons act on
+ * the project rather than on the panel, so there is often nothing else to see.
+ */
+/*
+ * Down fast, back slowly.
+ *
+ * The press is near-instant because it is a reaction, and the release takes
+ * its time because it is a recovery. Matching the two durations is what makes
+ * a button feel like a picture of a button; splitting them is most of what
+ * makes it feel like an object.
+ */
+.btn:active {
+    background: #141414;
+    transform: scale(0.97);
+    transition-duration: 60ms;
+}
 .btn.primary { flex: 1; background: #2f6ad0; border-color: #3f7ae0; color: #fff; }
 .btn.primary:hover { background: #3f7ae0; }
 .btn.secondary { flex: 1; }
@@ -359,7 +536,7 @@ body {
     align-items: center;
     gap: 2px;
     position: relative;
-    transition: border-color 0.15s;
+    transition: border-color var(--t-mid) var(--ease);
 }
 .preset-card:hover { border-color: var(--accent); }
 
@@ -437,7 +614,7 @@ body {
     border: 1px solid #333;
     cursor: pointer;
     position: relative;
-    transition: transform 0.1s;
+    transition: transform var(--t-fast) var(--ease);
 }
 .swatch:hover { transform: scale(1.08); border-color: #666; }
 .swatch.selected { border-color: var(--accent); border-width: 2px; }
@@ -540,7 +717,7 @@ body {
     cursor: pointer;
     font-size: 14px;
     line-height: 1;
-    transition: background 0.1s;
+    transition: background var(--t-fast) var(--ease);
 }
 .anchor-btn:hover { background: #2f6ad0; color: #fff; border-color: #3f7ae0; }
 .anchor-btn:active { background: #141414; }
@@ -561,7 +738,7 @@ body {
     cursor: pointer;
     font-size: 13px;
     line-height: 1;
-    transition: background 0.1s;
+    transition: background var(--t-fast) var(--ease);
 }
 .align-btn:hover, .dist-btn:hover {
     background: #2f6ad0; color: #fff; border-color: #3f7ae0;
@@ -639,8 +816,18 @@ body {
     background: transparent;
 }
 
-/* Firefox / newer CEF */
-* {
+/*
+ * Firefox / newer CEF.
+ *
+ * Aimed at the things that actually scroll. As a universal selector this had
+ * to be resolved against every element in the panel for the sake of the two
+ * that have a scrollbar.
+ */
+.content,
+.page,
+.lib-list,
+.upd-notes,
+.guide-body {
     scrollbar-width: thin;
     scrollbar-color: #3a3a3a transparent;
 }
@@ -1154,6 +1341,19 @@ body {
 .ic-solid { fill: currentColor; stroke: none; }
 
 /* Lit and filled means the property is animated */
+/*
+ * The stopwatch and the diamond fade between states rather than snapping.
+ * These are polled values, so they can change without the user having touched
+ * anything - a hard switch in the corner of the eye reads as a glitch, while
+ * a short fade reads as the panel following along.
+ */
+.kf-watch, .kf-dot, .kf-nav {
+    transition: color var(--t-mid) var(--ease);
+}
+.kf-watch .ic-face, .kf-dot .ic-face {
+    transition: fill var(--t-mid) var(--ease);
+}
+
 .prop-row.keyed .kf-watch { color: var(--state-key); }
 .prop-row.keyed .kf-watch .ic-face { fill: var(--state-key); }
 .prop-row.keyed .kf-watch .ic-hand { stroke: #101010; }

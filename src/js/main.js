@@ -21,6 +21,12 @@ function callAE(script, okMsg) {
         } else {
             setStatus(okMsg || res || I18N.t("status.done"));
         }
+        /*
+         * Anything sent through here changed the project, so the followers
+         * want to look again straight away rather than at the next tick -
+         * and at the quick rate, because the user is clearly working.
+         */
+        try { PanelPoll.wake(); } catch (e) {}
     });
 }
 
@@ -32,14 +38,93 @@ function setStatus(msg, isError) {
 
 // ====== NAVIGACE SIDEBARU ======
 var navBtns = document.querySelectorAll(".nav-btn");
+
+/*
+ * The marker that slides between navigation buttons.
+ *
+ * It is one element that moves, not a highlight that switches off here and on
+ * there - see .nav-indicator in style.css for why that difference is the
+ * whole point. Position and height are read off the active button, so the
+ * marker needs no knowledge of how many buttons there are or how tall the
+ * sidebar is, and it keeps up on its own when the panel is resized.
+ */
+var navIndicator = (function () {
+    var nav = document.querySelector(".nav");
+    if (!nav) return { move: function () {}, moveToActive: function () {} };
+
+    var el = document.createElement("div");
+    el.className = "nav-indicator";
+    nav.appendChild(el);
+
+    var first = true;
+
+    function move(btn) {
+        if (!btn) return;
+
+        /*
+         * The first placement jumps rather than travels. Sliding in from the
+         * top of the sidebar on panel open would be motion announcing itself
+         * with nothing to say - there is no previous state to move away from.
+         */
+        if (first) {
+            el.style.transition = "none";
+        }
+
+        el.style.height = btn.offsetHeight + "px";
+        el.style.transform = "translate3d(0, " + btn.offsetTop + "px, 0)";
+
+        if (first) {
+            // Force the jump to land before transitions are allowed back on
+            void el.offsetHeight;
+            el.style.transition = "";
+            el.classList.add("ready");
+            first = false;
+        }
+    }
+
+    function moveToActive() {
+        for (var i = 0; i < navBtns.length; i++) {
+            if (navBtns[i].classList.contains("active")) { move(navBtns[i]); return; }
+        }
+    }
+
+    window.addEventListener("resize", moveToActive);
+    return { move: move, moveToActive: moveToActive };
+})();
+
+/*
+ * Shows a page and lets it settle into place.
+ *
+ * display cannot be transitioned, so the page is shown at its starting
+ * offset, that offset is forced to be computed, and then it is taken away -
+ * which is what the browser animates back from. Reading offsetHeight is what
+ * does the forcing: without it the browser folds both class changes into one
+ * style pass, finds no start state to move from, and the page just appears.
+ *
+ * Note the resting state is the plain one, so a page shown by anything that
+ * does not go through here is simply visible rather than invisible.
+ */
+function showPage(pageEl) {
+    if (!pageEl) return;
+    pageEl.classList.add("active");
+    pageEl.classList.add("enter-start");
+    void pageEl.offsetHeight;
+    pageEl.classList.remove("enter-start");
+}
+
 for (var n = 0; n < navBtns.length; n++) {
     navBtns[n].addEventListener("click", function () {
         var page = this.getAttribute("data-page");
         for (var i = 0; i < navBtns.length; i++) navBtns[i].classList.remove("active");
         this.classList.add("active");
+        navIndicator.move(this);
+        try { PanelPoll.wake(); } catch (e) {}
         var pages = document.querySelectorAll(".page");
-        for (var j = 0; j < pages.length; j++) pages[j].classList.remove("active");
-        document.getElementById("page-" + page).classList.add("active");
+        for (var j = 0; j < pages.length; j++) {
+            pages[j].classList.remove("active");
+            pages[j].classList.remove("enter-start");
+        }
+        showPage(document.getElementById("page-" + page));
 
         /*
          * The canvas only gets real dimensions once its page becomes visible,
@@ -963,11 +1048,19 @@ try {
     var stored = null;
     try { stored = window.localStorage.getItem("fp_lang"); } catch (e) {}
 
+    /*
+     * Switching is asynchronous now - a language the panel has not shown yet
+     * has to fetch its pack first - so the dropdown and the status line are
+     * set from the callback rather than on the next line, where the change
+     * would not have happened yet.
+     */
     if (!stored) {
         try {
             var saved = PresetLibrary.loadSettings().lang;
             if (saved && saved !== I18N.getLanguage()) {
-                I18N.setLanguage(saved);       // also re-applies the DOM
+                I18N.setLanguage(saved, function () {   // also re-applies the DOM
+                    sel.value = I18N.getLanguage();
+                });
             }
         } catch (e) {}
     }
@@ -975,9 +1068,12 @@ try {
     sel.value = I18N.getLanguage();
 
     sel.addEventListener("change", function () {
-        I18N.setLanguage(this.value);
-        try { PresetLibrary.saveSetting("lang", this.value); } catch (e) {}
-        setStatus(I18N.t("status.done"));
+        var code = this.value;
+        I18N.setLanguage(code, function (ok) {
+            if (!ok) { sel.value = I18N.getLanguage(); return; }
+            try { PresetLibrary.saveSetting("lang", code); } catch (e) {}
+            setStatus(I18N.t("status.done"));
+        });
     });
 
     // Record the language in use, so the very first restart already has it
@@ -1279,6 +1375,152 @@ document.addEventListener("keydown", function (e) {
 
 setStatus(I18N.t("status.ready"));
 
+
+/* ============================================================
+ *  POLL SCHEDULER - one timer, one round trip, for every follower
+ * ============================================================ */
+
+/*
+ * After Effects tells CEP nothing about the selection changing, so the panel
+ * has to ask. Asking is the expensive part: every evalScript crosses onto the
+ * one thread After Effects renders with, and the panel used to cross it twice
+ * over, on two timers that had no idea about each other.
+ *
+ * So there is one timer here, and one call, and the answer gets handed to
+ * whoever registered for a piece of it.
+ *
+ * The rate is not fixed either. Nothing changes in After Effects most of the
+ * time - the user is looking at the viewport, not dragging a layer - and a
+ * panel that keeps asking anyway is just a tax on the render. When the answer
+ * stops changing the interval backs off; the moment anything happens in the
+ * panel, wake() puts it straight back to its quickest.
+ */
+var PanelPoll = (function () {
+
+    var FAST = 250;        // right after something happened
+    var STEPS = [250, 400, 700, 1200, 2000];
+    var IDLE_TO_SLOW = 6;  // unchanged polls before easing off a step
+
+    var subs = [];
+    var timer = null;
+    var inFlight = false;
+    var stepIndex = 0;
+    var unchanged = 0;
+    var lastRaw = null;
+    var windowVisible = true;
+
+    var SEP = String.fromCharCode(1);
+
+    /*
+     * A sleeping panel must not poll at all. The page check alone did not
+     * cover it - a collapsed or hidden panel still has its Main tab marked
+     * active, so it went on asking After Effects questions nobody could see
+     * the answer to.
+     */
+    function watchVisibility() {
+        try {
+            cs.addEventListener("com.adobe.csxs.events.WindowVisibilityChanged",
+                function (ev) {
+                    var d = ev && ev.data;
+                    windowVisible = !(d === "false" || d === false);
+                    if (windowVisible) wake();
+                });
+        } catch (e) { /* older CEP - stay awake, as before */ }
+
+        // Belt and braces: the CEF document reports it too on most builds
+        try {
+            document.addEventListener("visibilitychange", function () {
+                windowVisible = (document.visibilityState !== "hidden");
+                if (windowVisible) wake();
+            });
+        } catch (e2) {}
+    }
+
+    function mainVisible() {
+        var page = document.getElementById("page-main");
+        return !!(page && page.classList.contains("active"));
+    }
+
+    /* Is there anyone who both wants the answer and can take it right now? */
+    function anyoneListening() {
+        if (!windowVisible || !mainVisible()) return false;
+        for (var i = 0; i < subs.length; i++) {
+            if (!subs[i].busy || !subs[i].busy()) return true;
+        }
+        return false;
+    }
+
+    function tick() {
+        if (inFlight || !anyoneListening()) return;
+        inFlight = true;
+
+        cs.evalScript("pollPanel()", function (raw) {
+            inFlight = false;
+            if (raw === lastRaw) {
+                if (++unchanged >= IDLE_TO_SLOW) { unchanged = 0; slower(); }
+                return;
+            }
+            lastRaw = raw;
+            unchanged = 0;
+            faster();
+
+            var parts = String(raw == null ? "" : raw).split(SEP);
+            for (var i = 0; i < subs.length; i++) {
+                if (subs[i].busy && subs[i].busy()) continue;
+                try { subs[i].apply(parts[subs[i].slot]); } catch (e) {}
+            }
+        });
+    }
+
+    function retime() {
+        if (timer) window.clearInterval(timer);
+        timer = window.setInterval(tick, STEPS[stepIndex]);
+    }
+    function slower() {
+        if (stepIndex >= STEPS.length - 1) return;
+        stepIndex++; retime();
+    }
+    function faster() {
+        if (stepIndex === 0) return;
+        stepIndex = 0; retime();
+    }
+
+    /*
+     * Back to the quickest rate, and ask now rather than at the next tick.
+     * Anything the user does in the panel is a promise that the state is about
+     * to change, so waiting two seconds to notice would feel broken.
+     */
+    function wake() {
+        faster();
+        lastRaw = null;
+        unchanged = 0;
+        tick();
+    }
+
+    /*
+     * slot 0 is the transform half of the answer, slot 1 the shape half.
+     * busy() lets a follower sit a round out while its own drag or edit is in
+     * progress, without stopping the others from being served.
+     */
+    function register(slot, applyFn, busyFn) {
+        subs.push({ slot: slot, apply: applyFn, busy: busyFn });
+    }
+
+    function start() {
+        if (timer) return;
+        watchVisibility();
+        retime();
+        tick();
+    }
+
+    window.addEventListener("beforeunload", function () {
+        if (timer) window.clearInterval(timer);
+    });
+
+    return { register: register, start: start, wake: wake, FAST: FAST };
+})();
+
+
 /* ============================================================
  *  TRANSFORM ROWS - the timeline's Transform block, in the panel
  * ============================================================ */
@@ -1306,9 +1548,7 @@ setStatus(I18N.t("status.ready"));
     var ROW_INDEX = { anchor: 0, position: 1, scale: 2, rotation: 3, opacity: 4 };
     var KEY_ROW = { ax: 0, ay: 0, px: 1, py: 1, sx: 2, sy: 2, rot: 3, op: 4 };
 
-    var POLL_MS = 400;
     var lastSignature = null;
-    var inFlight = false;
     var busy = false;          // dragging or typing - polling must not fight it
     var values = null;
     var linked = true;
@@ -1322,10 +1562,6 @@ setStatus(I18N.t("status.ready"));
     var nums = document.querySelectorAll(".prop-row[data-row] .prop-num");
     if (!rows.length || !nums.length) return;
 
-    function mainVisible() {
-        var page = document.getElementById("page-main");
-        return page && page.classList.contains("active");
-    }
 
     // The unit belongs with the number, the way the timeline prints it
     var UNIT = { ax: "", ay: "", px: "", py: "", sx: "%", sy: "%", rot: "\u00b0", op: "%" };
@@ -1360,29 +1596,27 @@ setStatus(I18N.t("status.ready"));
         }
     }
 
-    function poll() {
-        if (inFlight || busy || !mainVisible()) return;
-        inFlight = true;
+    /*
+     * Handed the transform half of the shared poll. The timer, the in-flight
+     * guard and the visibility check all live in PanelPoll now - what is left
+     * here is only what to do with the answer.
+     */
+    function applyPoll(res) {
+        if (res === lastSignature) return;
+        lastSignature = res;
 
-        cs.evalScript("pollTransform()", function (res) {
-            inFlight = false;
-            if (busy) return;
-            if (res === lastSignature) return;
-            lastSignature = res;
+        if (!res || res === "NONE") { values = null; paint(); paintState(null, null); return; }
 
-            if (!res || res === "NONE") { values = null; paint(); paintState(null, null); return; }
+        var p = res.split("|");
+        if (p.length < 8) return;
+        var a = p[2].split(","), pos = p[3].split(","), sc = p[4].split(",");
 
-            var p = res.split("|");
-            if (p.length < 8) return;
-            var a = p[2].split(","), pos = p[3].split(","), sc = p[4].split(",");
-
-            values = {
-                ax: +a[0], ay: +a[1], px: +pos[0], py: +pos[1],
-                sx: +sc[0], sy: +sc[1], rot: +p[5], op: +p[6]
-            };
-            paint();
-            paintState(p[7], p[8]);
-        });
+        values = {
+            ax: +a[0], ay: +a[1], px: +pos[0], py: +pos[1],
+            sx: +sc[0], sy: +sc[1], rot: +p[5], op: +p[6]
+        };
+        paint();
+        paintState(p[7], p[8]);
     }
 
     /*
@@ -1392,9 +1626,25 @@ setStatus(I18N.t("status.ready"));
      * not have. In that case the row still shows its type as None, because
      * that is exactly what it means and it is also how one gets added back.
      */
+    /*
+     * The two controls are looked up once and kept. Finding them by attribute
+     * selector on every repaint meant scanning the document several times a
+     * second for a pair of elements that never move.
+     */
+    var GFX = {};
+    function graphicEls(kind) {
+        if (!GFX[kind]) {
+            GFX[kind] = {
+                sel: document.querySelector('.prop-type[data-stype="' + kind + '"]'),
+                chk: document.querySelector('.prop-check[data-sen="' + kind + '"]')
+            };
+        }
+        return GFX[kind];
+    }
+
     function paintGraphic(kind, raw) {
-        var sel = document.querySelector('.prop-type[data-stype="' + kind + '"]');
-        var chk = document.querySelector('.prop-check[data-sen="' + kind + '"]');
+        var els = graphicEls(kind);
+        var sel = els.sel, chk = els.chk;
         if (!sel || !chk) return;
 
         // No shape group at all - the controls have nothing to act on
@@ -1424,7 +1674,8 @@ setStatus(I18N.t("status.ready"));
         }
     }
 
-    function refresh() { lastSignature = null; poll(); }
+    /* Force the next poll to repaint even if the signature matches. */
+    function refresh() { lastSignature = null; PanelPoll.wake(); }
 
     function report(res) {
         if (res && res.indexOf("ERROR:") === 0) {
@@ -1606,11 +1857,7 @@ setStatus(I18N.t("status.ready"));
         linkEl.classList[linked ? "add" : "remove"]("on");
     });
 
-    var timer = window.setInterval(poll, POLL_MS);
-    window.addEventListener("beforeunload", function () {
-        if (timer) window.clearInterval(timer);
-    });
-    poll();
+    PanelPoll.register(0, applyPoll, function () { return busy; });
 })();
 
 
@@ -1652,9 +1899,7 @@ setStatus(I18N.t("status.ready"));
         opacity:     { step: 0.5, unit: "%", min: 0, max: 100 }
     };
 
-    var POLL_MS = 500;
     var lastSignature = null;
-    var inFlight = false;
     var busy = false;
     var data = null;                 // row -> { vals:[..]|hex, state, here }
     var linked = { size: true, scale: true };
@@ -1663,10 +1908,6 @@ setStatus(I18N.t("status.ready"));
     var rows = document.querySelectorAll(".prop-row[data-srow]");
     if (!rows.length) return;
 
-    function mainVisible() {
-        var page = document.getElementById("page-main");
-        return page && page.classList.contains("active");
-    }
     function n1(v) { return String(Math.round(Number(v) * 10) / 10); }
 
     function paint() {
@@ -1724,13 +1965,12 @@ setStatus(I18N.t("status.ready"));
         }
     }
 
-    function poll() {
-        if (inFlight || busy || !mainVisible()) return;
-        inFlight = true;
-
-        cs.evalScript("pollShapeGroup()", function (res) {
-            inFlight = false;
-            if (busy) return;
+    /*
+     * Handed the shape half of the shared poll - see PanelPoll. The timer and
+     * the guards moved there; this is only what to do with the answer.
+     */
+    function applyPoll(res) {
+        {
             if (res === lastSignature) return;
             lastSignature = res;
 
@@ -1761,7 +2001,7 @@ setStatus(I18N.t("status.ready"));
                 data[id] = { text: bits[0], state: +bits[1], here: bits[2] === "1" };
             }
             paint();
-        });
+        }
     }
 
     /*
@@ -1771,9 +2011,25 @@ setStatus(I18N.t("status.ready"));
      * not have. In that case the row still shows its type as None, because
      * that is exactly what it means and it is also how one gets added back.
      */
+    /*
+     * The two controls are looked up once and kept. Finding them by attribute
+     * selector on every repaint meant scanning the document several times a
+     * second for a pair of elements that never move.
+     */
+    var GFX = {};
+    function graphicEls(kind) {
+        if (!GFX[kind]) {
+            GFX[kind] = {
+                sel: document.querySelector('.prop-type[data-stype="' + kind + '"]'),
+                chk: document.querySelector('.prop-check[data-sen="' + kind + '"]')
+            };
+        }
+        return GFX[kind];
+    }
+
     function paintGraphic(kind, raw) {
-        var sel = document.querySelector('.prop-type[data-stype="' + kind + '"]');
-        var chk = document.querySelector('.prop-check[data-sen="' + kind + '"]');
+        var els = graphicEls(kind);
+        var sel = els.sel, chk = els.chk;
         if (!sel || !chk) return;
 
         // No shape group at all - the controls have nothing to act on
@@ -1803,7 +2059,8 @@ setStatus(I18N.t("status.ready"));
         }
     }
 
-    function refresh() { lastSignature = null; poll(); }
+    /* Force the next poll to repaint even if the signature matches. */
+    function refresh() { lastSignature = null; PanelPoll.wake(); }
 
     function report(res) {
         if (res && res.indexOf("ERROR:") === 0) {
@@ -2032,11 +2289,7 @@ setStatus(I18N.t("status.ready"));
         cs.evalScript("resetShapeBlock('transform')", report);
     });
 
-    var timer = window.setInterval(poll, POLL_MS);
-    window.addEventListener("beforeunload", function () {
-        if (timer) window.clearInterval(timer);
-    });
-    poll();
+    PanelPoll.register(1, applyPoll, function () { return busy; });
 })();
 
 
@@ -2079,3 +2332,25 @@ setStatus(I18N.t("status.ready"));
     window.setTimeout(fit, 100);
     fit();
 })();
+
+
+/*
+ * Everything that follows the selection has registered by now, so the shared
+ * timer can start. Starting it earlier would only mean polling for an audience
+ * that is not listening yet.
+ */
+PanelPoll.start();
+
+
+/*
+ * The navigation marker has to be told where to start.
+ *
+ * Deferred to the load event: the sidebar buttons need their final height
+ * before offsetTop means anything, and web fonts or a late layout pass can
+ * still move them. The first placement jumps rather than slides, so being a
+ * frame late costs nothing visible.
+ */
+window.addEventListener("load", function () {
+    try { navIndicator.moveToActive(); } catch (e) {}
+});
+try { navIndicator.moveToActive(); } catch (e) {}

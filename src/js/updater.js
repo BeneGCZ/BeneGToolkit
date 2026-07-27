@@ -225,7 +225,23 @@ var Updater = (function () {
     function get(url, opts, cb) {
         opts = opts || {};
         var depth = opts._depth || 0;
-        if (depth > 5) { cb(new Error("Too many redirects")); return; }
+
+        /*
+         * Every path out of here goes through once().
+         *
+         * Aborting on timeout also makes the request emit an error, so the
+         * old code reported the same download as failed twice - and if the
+         * abort raced a finished response, it reported a success and then a
+         * failure. The dialog believed whichever arrived last.
+         */
+        var settled = false;
+        function once(err, data) {
+            if (settled) return;
+            settled = true;
+            cb(err, data);
+        }
+
+        if (depth > 5) { once(new Error("Too many redirects")); return; }
 
         var headers = { "User-Agent": UA };
         if (opts.json) headers["Accept"] = "application/vnd.github+json";
@@ -243,13 +259,13 @@ var Updater = (function () {
                         json: opts.json,
                         onProgress: opts.onProgress,
                         _depth: depth + 1
-                    }, cb);
+                    }, once);
                     return;
                 }
 
                 if (code !== 200) {
                     res.resume();
-                    cb(httpError(code, res.headers));
+                    once(httpError(code, res.headers));
                     return;
                 }
 
@@ -263,19 +279,19 @@ var Updater = (function () {
                     if (opts.onProgress) opts.onProgress(got, total);
                 });
                 res.on("end", function () {
-                    cb(null, Buffer.concat(chunks));
+                    once(null, Buffer.concat(chunks));
                 });
-                res.on("error", function (e) { cb(e); });
+                res.on("error", function (e) { once(e); });
             });
         } catch (e) {
-            cb(e);
+            once(e);
             return;
         }
 
-        request.on("error", function (e) { cb(e); });
+        request.on("error", function (e) { once(e); });
         request.setTimeout(30000, function () {
             try { request.abort(); } catch (e) {}
-            cb(new Error("timeout"));
+            once(new Error("timeout"));
         });
     }
 
@@ -556,8 +572,13 @@ var Updater = (function () {
             var k = String(CONFIG.keep[i]).replace(/\\/g, "/");
             if (rel === k || rel.indexOf(k + "/") === 0) return true;
         }
-        // Never let an archive reach outside the extension folder
-        if (rel.indexOf("..") > -1 || rel.charAt(0) === "/") return true;
+        /*
+         * Never let an archive reach outside the extension folder. The drive
+         * letter matters as much as the leading slash - "C:/Windows/..." is
+         * just as absolute, and charAt(0) alone waved it through.
+         */
+        if (rel.indexOf("..") > -1) return true;
+        if (rel.charAt(0) === "/" || /^[a-zA-Z]:/.test(rel)) return true;
         return false;
     }
 
@@ -676,7 +697,17 @@ var Updater = (function () {
             var f = fs(), p = pathMod();
             var root = p.join(dataRoot(), "backups");
             if (!f.existsSync(root)) return;
-            var names = f.readdirSync(root).sort();
+            /*
+             * Sorted on the timestamp, not the whole folder name. A plain
+             * sort() is alphabetical, so 1.10.0 landed before 1.9.0 and the
+             * pruning could throw away the newer backup of the two. The stamp
+             * is ISO, which sorts correctly as text.
+             */
+            var names = f.readdirSync(root).sort(function (a, b) {
+                var x = a.split("_").slice(1).join("_");
+                var y = b.split("_").slice(1).join("_");
+                return x < y ? -1 : (x > y ? 1 : 0);
+            });
             for (var i = 0; i < names.length - keep; i++) {
                 rmTree(p.join(root, names[i]));
             }
@@ -748,9 +779,24 @@ var Updater = (function () {
                 written.push(rel);
             }
         } catch (e) {
-            // Put everything back and report the original failure
+            /*
+             * Put everything back and report the original failure.
+             *
+             * Copying the backup over the top restores what was there, but it
+             * cannot remove what was not: files the half-finished release had
+             * added stayed behind, leaving the old version running with a few
+             * strangers in its folder. So anything written that the backup has
+             * no copy of goes as well.
+             */
             onStep("rollback");
             try { copyTree(backup, root, null); } catch (e2) {}
+            for (var r = 0; r < written.length; r++) {
+                try {
+                    if (!f.existsSync(p.join(backup, written[r]))) {
+                        f.unlinkSync(p.join(root, written[r]));
+                    }
+                } catch (e3) {}
+            }
             restoreUserData(snap);
             e.rolledBack = true;
             throw e;

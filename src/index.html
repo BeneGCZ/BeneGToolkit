@@ -777,6 +777,23 @@
 
     <script src="js/CSInterface.js"></script>
     <script src="js/i18n.js"></script>
+    <!--
+        Pulls in the one language pack this user needs, before anything asks
+        I18N for a string. document.write is deliberate: it blocks the parser
+        until the pack is in, which keeps the whole start-up synchronous and
+        means the first paint is already translated - no flash of English.
+        English itself is built into i18n.js, so it never needs a pack.
+    -->
+    <script>
+        (function () {
+            var code = null;
+            try { code = window.localStorage.getItem("fp_lang"); } catch (e) {}
+            if (!code) code = (navigator.language || "en").substring(0, 2).toLowerCase();
+            if (code && code !== "en" && /^[a-z]{2}$/.test(code)) {
+                document.write('<script src="lang/' + code + '.js"><\/script>');
+            }
+        })();
+    </script>
     <script src="js/curveEditor.js"></script>
     <script src="js/colorPicker.js"></script>
     <script src="js/library.js"></script>

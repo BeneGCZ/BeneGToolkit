@@ -340,7 +340,7 @@ CurveEditor.prototype._bindEvents = function () {
             self._dragYMIN = n.y - pad;
         }
 
-        self.draw();
+        self.drawSoon();
         self._emit();
     });
 
@@ -377,6 +377,27 @@ CurveEditor.prototype._emit = function () {
 };
 
 // --- Rendering ---
+/*
+ * A redraw at most once per frame.
+ *
+ * Dragging a handle fires mousemove far more often than the screen refreshes,
+ * and every one of those used to repaint the whole canvas. Coalescing them
+ * onto the frame boundary costs nothing in smoothness - the extra paints were
+ * never visible - and takes the drag from ragged to steady on a busy panel.
+ */
+CurveEditor.prototype.drawSoon = function () {
+    var self = this;
+    if (this._rafPending) return;
+
+    if (typeof window.requestAnimationFrame !== "function") { this.draw(); return; }
+
+    this._rafPending = true;
+    window.requestAnimationFrame(function () {
+        self._rafPending = false;
+        self.draw();
+    });
+};
+
 CurveEditor.prototype.draw = function () {
     var ctx = this.ctx;
     var W = this._w, H = this._h;
