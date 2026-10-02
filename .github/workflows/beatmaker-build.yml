@@ -1,0 +1,239 @@
+# Builds the Beat Maker analyzer (bgbeatmaker) for Windows and macOS, exports the two
+# beat-tracking models, tests every build on real machines, and publishes the files
+# the panel downloads as a PRE-RELEASE named beatmaker-<version>.
+#
+# Why a pre-release: the panel's updater reads /releases/latest, which never returns
+# a pre-release, and with pre-releases switched on it compares versions - a tag that
+# is not a version ("beatmaker-0.2.0") parses as 0.0.0 and can never win. So this
+# release can sit in the same repository without ever being offered as a panel update.
+#
+# Why built here: the macOS build needs a Mac, and the panel pins the SHA-256 of each
+# file it downloads - so the files must never change once published. An existing
+# release is therefore left alone; a rebuild means a new BM_VERSION.
+#
+# Everything a failed step needs to say is written as an annotation (::error::), which
+# can be read on the run page without downloading logs.
+
+name: Beat Maker analyzer
+
+on:
+  push:
+    branches: [beatmaker-build]
+    paths:
+      - "analyzer/**"
+      - ".github/workflows/beatmaker-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beatmaker-build
+  cancel-in-progress: false
+
+env:
+  BM_VERSION: "0.2.0"
+  ORT_VERSION: "1.16.3"
+  # the archives the native build links against, as downloaded and hashed on 2026-09-29
+  ORT_WIN_SHA256: "5eb01f69bb2d9fa2893c88310bb5c1eb8d79e8c460810817eef08b6f9b1078af"
+  ORT_MAC_SHA256: "6428d0f0ff1386e8e8256a708e187c1f8861387c9554bfc9c5f3390ffa0df5cc"
+
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the exporter (CPU torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install beat-this onnx onnxruntime soxr soundfile numpy
+      - name: Test audio
+        run: python analyzer/tools/ci_beat_check.py make testaudio
+      - name: Export final0 and small0 to ONNX and compare with PyTorch
+        run: |
+          python analyzer/tools/export_onnx.py models testaudio/*.wav
+          cat models/export_report.json
+          python - <<'EOF'
+          import json
+          r = json.load(open("models/export_report.json"))
+          bad = False
+          for name, v in r.items():
+              msg = "%s: max |logit diff| %.2e, identical beats %s" % (name, v["max_abs_logit_diff"], v["identical_beats"])
+              same, total = map(int, v["identical_beats"].split("/"))
+              if v["max_abs_logit_diff"] > 1e-3 or same != total:
+                  print("::error::export not faithful - " + msg); bad = True
+              else:
+                  print("::notice::" + msg)
+          raise SystemExit(1 if bad else 0)
+          EOF
+      - name: Model licence
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/CPJKU/beat_this/main/LICENSE -o models/beat_this-LICENSE.txt \
+            || curl -fsSL https://raw.githubusercontent.com/CPJKU/beat_this/master/LICENSE -o models/beat_this-LICENSE.txt
+          head -3 models/beat_this-LICENSE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: models
+          path: |
+            models/beat_this-final0.onnx
+            models/beat_this-small0.onnx
+            models/beat_this-LICENSE.txt
+            models/export_report.json
+
+  windows:
+    needs: models
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models
+      - name: ONNX Runtime (pinned)
+        run: |
+          curl -fsSL -o ort.zip "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-win-x64-${ORT_VERSION}.zip"
+          echo "${ORT_WIN_SHA256}  ort.zip" | sha256sum -c - || { echo "::error::onnxruntime-win-x64 archive does not match its pinned SHA-256"; exit 1; }
+          7z x -y ort.zip > /dev/null
+      - name: Build (x64, compiler baseline - no AVX)
+        run: |
+          cmake -S analyzer -B build -G "Visual Studio 17 2022" -A x64 -DONNXRUNTIME_DIR="$(cygpath -m "$PWD/onnxruntime-win-x64-${ORT_VERSION}")"
+          cmake --build build --config Release
+      - name: Package with the C++ runtime the inference library needs
+        run: |
+          VS="$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -property installationPath)"
+          CRT="$(ls -d "$(cygpath -u "$VS")"/VC/Redist/MSVC/*/x64/Microsoft.VC14*.CRT | sort -V | tail -1)"
+          echo "C++ runtime from: $CRT"
+          mkdir pkg
+          cp build/Release/bgbeatmaker.exe build/Release/onnxruntime.dll pkg/
+          cp "$CRT/msvcp140.dll" "$CRT/vcruntime140.dll" "$CRT/vcruntime140_1.dll" pkg/
+          cp "onnxruntime-win-x64-${ORT_VERSION}/LICENSE" pkg/onnxruntime-LICENSE.txt
+          cp "onnxruntime-win-x64-${ORT_VERSION}/ThirdPartyNotices.txt" pkg/onnxruntime-ThirdPartyNotices.txt
+          printf 'bgbeatmaker %s - the Beat Maker analyzer of BeneG Toolkit (Windows x64).\nThe panel downloads and runs this itself.\nInference: ONNX Runtime %s (MIT, licence files beside this one).\nmsvcp140/vcruntime140 are the Microsoft Visual C++ runtime, redistributed as permitted.\n' "$BM_VERSION" "$ORT_VERSION" > pkg/README.txt
+          ls -la pkg
+      - name: Test - small model
+        run: |
+          python analyzer/tools/ci_beat_check.py make testaudio
+          python analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker.exe models/beat_this-small0.onnx testaudio
+      - name: Test - full model
+        run: python analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker.exe models/beat_this-final0.onnx testaudio
+      - name: Zip
+        run: |
+          cd pkg && 7z a -tzip "../bgbeatmaker-${BM_VERSION}-win-x64.zip" * > /dev/null && cd ..
+          sha256sum "bgbeatmaker-${BM_VERSION}-win-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: bgbeatmaker-*-win-x64.zip
+
+  macos:
+    needs: models
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models
+      - name: ONNX Runtime (pinned, universal2)
+        run: |
+          curl -fsSL -o ort.tgz "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-osx-universal2-${ORT_VERSION}.tgz"
+          echo "${ORT_MAC_SHA256}  ort.tgz" | shasum -a 256 -c - || { echo "::error::onnxruntime-osx-universal2 archive does not match its pinned SHA-256"; exit 1; }
+          tar xzf ort.tgz
+          ls -la "onnxruntime-osx-universal2-${ORT_VERSION}/lib"
+      - name: Build (universal - Intel 10.14+ and Apple Silicon 11+)
+        run: |
+          cmake -S analyzer -B build -DONNXRUNTIME_DIR="$PWD/onnxruntime-osx-universal2-${ORT_VERSION}" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Package and sign (ad-hoc; the runtime keeps its own signature)
+        run: |
+          mkdir pkg
+          cp build/bgbeatmaker "build/libonnxruntime.${ORT_VERSION}.dylib" pkg/
+          codesign --force --sign - pkg/bgbeatmaker
+          codesign --verify --strict --verbose=2 pkg/bgbeatmaker "pkg/libonnxruntime.${ORT_VERSION}.dylib" \
+            || { echo "::error::a signature does not verify"; exit 1; }
+          lipo -info pkg/bgbeatmaker
+          lipo -archs pkg/bgbeatmaker | grep -q x86_64 && lipo -archs pkg/bgbeatmaker | grep -q arm64 \
+            || { echo "::error::bgbeatmaker is not universal: $(lipo -archs pkg/bgbeatmaker)"; exit 1; }
+          otool -L pkg/bgbeatmaker
+          minos() { otool -arch "$1" -l pkg/bgbeatmaker | awk '/ minos /{print $2; exit} /LC_VERSION_MIN_MACOSX/{getline; getline; print $2; exit}'; }
+          echo "::notice::macOS minimum read from the binary: Intel $(minos x86_64), Apple Silicon $(minos arm64)"
+          tar xzf ort.tgz --to-stdout "onnxruntime-osx-universal2-${ORT_VERSION}/LICENSE" > pkg/onnxruntime-LICENSE.txt 2>/dev/null || true
+          tar xzf ort.tgz --to-stdout "onnxruntime-osx-universal2-${ORT_VERSION}/ThirdPartyNotices.txt" > pkg/onnxruntime-ThirdPartyNotices.txt 2>/dev/null || true
+          printf 'bgbeatmaker %s - the Beat Maker analyzer of BeneG Toolkit (macOS, Intel + Apple Silicon).\nThe panel downloads and runs this itself.\nInference: ONNX Runtime %s (MIT, licence files beside this one).\n' "$BM_VERSION" "$ORT_VERSION" > pkg/README.txt
+          ls -la pkg
+      - name: Test - Apple Silicon, small and full model
+        run: |
+          python3 analyzer/tools/ci_beat_check.py make testaudio
+          python3 analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker models/beat_this-small0.onnx testaudio
+          python3 analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker models/beat_this-final0.onnx testaudio
+      - name: Test - the Intel half through Rosetta (informative)
+        continue-on-error: true
+        run: python3 analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker models/beat_this-small0.onnx testaudio --arch x86_64
+      - name: Zip
+        run: |
+          cd pkg && zip -X -q "../bgbeatmaker-${BM_VERSION}-macos-universal.zip" * && cd ..
+          shasum -a 256 "bgbeatmaker-${BM_VERSION}-macos-universal.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: bgbeatmaker-*-macos-universal.zip
+
+  # A real Intel Mac. Informative only: if GitHub has retired the label the job just
+  # never starts, and the release below does not wait for it.
+  macos-intel:
+    needs: macos
+    runs-on: macos-15-intel
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models
+      - name: Unpack as the panel does, and test
+        run: |
+          mkdir pkg && cd pkg && unzip -q ../dist/bgbeatmaker-*-macos-universal.zip && chmod 755 bgbeatmaker && cd ..
+          echo "macOS $(sw_vers -productVersion), $(uname -m)"
+          python3 analyzer/tools/ci_beat_check.py make testaudio
+          python3 analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker models/beat_this-small0.onnx testaudio
+          python3 analyzer/tools/ci_beat_check.py check pkg/bgbeatmaker models/beat_this-final0.onnx testaudio
+
+  release:
+    needs: [models, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish the pre-release (once - never overwritten)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="beatmaker-${BM_VERSION}"
+          cd dist
+          ls -la
+          sha256sum bgbeatmaker-*.zip beat_this-final0.onnx beat_this-small0.onnx beat_this-LICENSE.txt > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          while read -r h f; do echo "::notice::sha256 $f $h"; done < SHA256SUMS.txt
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::warning::$TAG already exists - left untouched (the panel pins its hashes); bump BM_VERSION to publish a new build"
+            exit 0
+          fi
+          printf 'Files the BeneG Toolkit panel downloads for Beat Maker. Not a panel update.\n\nbgbeatmaker %s (Windows x64, macOS universal), built and tested by this workflow; beat tracking models (Beat This!, MIT) exported to ONNX and checked against PyTorch.\n' "$BM_VERSION" > notes.md
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Beat Maker analyzer $BM_VERSION" --notes-file notes.md \
+            bgbeatmaker-*.zip beat_this-final0.onnx beat_this-small0.onnx beat_this-LICENSE.txt SHA256SUMS.txt
+          echo "::notice::published $TAG"
