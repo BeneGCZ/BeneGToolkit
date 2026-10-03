@@ -104,12 +104,20 @@ jobs:
           open("/tmp/bg_clip.png", "wb").write(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", 64, 48, 8, 2, 0, 0, 0)) + ch(b"IDAT", zlib.compress(raw)) + ch(b"IEND", b""))
           EOF
           ok=1
-          ls -la /tmp/bg_clip.png || echo "::error::test PNG was not written"
-          # 1. a file, as Finder puts it there
-          set_out=$(osascript -e 'set the clipboard to (POSIX file "/tmp/bg_clip.png")' 2>&1 | tr '\n' ' ')
-          [ -n "$set_out" ] && echo "::warning::setting the clipboard said: $set_out"
-          got=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1 | tr '\n' ' ' | sed 's/ *$//')
-          if [ "$got" = "/tmp/bg_clip.png" ]; then echo "::notice::Finder file on the clipboard read back: $got"; else echo "::error::file on clipboard: got '$got'"; ok=0; fi
+          ls -la /tmp/bg_clip.png > /dev/null || echo "::error::test PNG was not written"
+          # 1. a file, put there the way Finder does it (a file URL on NSPasteboard)...
+          cat > put.js <<'EOF'
+          ObjC.import('AppKit');var pb=$.NSPasteboard.generalPasteboard;pb.clearContents;pb.writeObjects($.NSArray.arrayWithObject($.NSURL.fileURLWithPath('/tmp/bg_clip.png')));'ok'
+          EOF
+          # ...and read with exactly the script clipboard.js runs (PB_FILE)
+          cat > get.js <<'EOF'
+          ObjC.import('AppKit');var pb=$.NSPasteboard.generalPasteboard;var o=$.NSDictionary.dictionaryWithObjectForKey($.NSNumber.numberWithBool(true),$.NSPasteboardURLReadingFileURLsOnlyKey);var a=pb.readObjectsForClassesOptions($.NSArray.arrayWithObject($.NSURL),o);(a&&a.count>0)?ObjC.unwrap(a.objectAtIndex(0).path):''
+          EOF
+          osascript -l JavaScript put.js > /dev/null 2> put.err || echo "::warning::putting the file URL said: $(cat put.err | tr '\n' ' ')"
+          got=$(osascript -l JavaScript get.js 2>&1 | tr '\n' ' ' | sed 's/ *$//')
+          if [ "$got" = "/tmp/bg_clip.png" ]; then echo "::notice::Finder-style file URL read back through NSPasteboard: $got"; else echo "::error::file on clipboard (NSPasteboard): got '$got'"; ok=0; fi
+          old=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1 | tr '\n' ' ' | sed 's/ *$//')
+          echo "::notice::the AppleScript fallback on the same clipboard: '$old'"
           # 2. an image (PNG), written out by the same four lines macPaste uses
           osascript -e 'set the clipboard to (read (POSIX file "/tmp/bg_clip.png") as «class PNGf»)'
           rm -f /tmp/bg_out.png
