@@ -45,12 +45,17 @@ jobs:
           cd openmp-11.0.0.src
           sed -i '' -e '/.size __kmp_unnamed_critical_addr/d' runtime/src/z_Linux_asm.S
           sed -i '' -e 's/__kmp_unnamed_critical_addr/___kmp_unnamed_critical_addr/g' runtime/src/z_Linux_asm.S
+          # quiet unless it fails - then the last lines go into the run's annotations
+          logged() { "$@" > "$RUNNER_TEMP/step.log" 2>&1 || { echo "::error::$1 failed: $(tail -25 "$RUNNER_TEMP/step.log" | tr '\n' '|' | cut -c1-3000)"; exit 1; }; }
+          cmake --version | head -1
           for a in x86_64 arm64; do
             mkdir build-$a && cd build-$a
-            cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES=$a \
-                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET \
-                  -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF .. > /dev/null
-            cmake --build . -j 3 > /dev/null && cmake --build . --target install > /dev/null
+            # CMAKE_POLICY_VERSION_MINIMUM: the runners' CMake 4 refuses OpenMP 11's old minimum version
+            logged cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES=$a \
+                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+                  -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF ..
+            logged cmake --build . -j 3
+            logged cmake --build . --target install
             cd ..
           done
           mkdir -p $GITHUB_WORKSPACE/omp/lib
@@ -87,20 +92,21 @@ jobs:
           ls vk/MoltenVK/MoltenVK.xcframework
       - name: Build x86_64 and arm64 for macOS 11
         run: |
+          logged() { "$@" > "$RUNNER_TEMP/step.log" 2>&1 || { echo "::error::$1 failed: $(tail -25 "$RUNNER_TEMP/step.log" | tr '\n' '|' | cut -c1-3000)"; exit 1; }; }
           OMP="$PWD/omp"
           export VULKAN_SDK="$PWD/vk/macOS"
           for a in x86_64 arm64; do
             EXTRA=""
             [ "$a" = "x86_64" ] && EXTRA="-DCMAKE_CROSSCOMPILING=ON -DCMAKE_SYSTEM_PROCESSOR=x86_64"
             mkdir build-$a && cd build-$a
-            cmake -DCMAKE_BUILD_TYPE=Release -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES=$a \
-                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET $EXTRA \
+            logged cmake -DCMAKE_BUILD_TYPE=Release -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES=$a \
+                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET -DCMAKE_POLICY_VERSION_MINIMUM=3.5 $EXTRA \
                   -DOpenMP_C_FLAGS="-Xclang -fopenmp -I$OMP/include" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp -I$OMP/include" \
                   -DOpenMP_C_LIB_NAMES=libomp -DOpenMP_CXX_LIB_NAMES=libomp -DOpenMP_libomp_LIBRARY="$OMP/lib/libomp.a" \
                   -DVulkan_INCLUDE_DIR="$PWD/../vk/MoltenVK/include" \
                   -DVulkan_LIBRARY="$PWD/../vk/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a" \
-                  ../rife-src/src > /dev/null || { echo "::error::cmake failed for $a"; exit 1; }
-            cmake --build . -j 3 2>&1 | tail -5
+                  ../rife-src/src
+            logged cmake --build . -j 3
             [ -f rife-ncnn-vulkan ] || { echo "::error::no binary for $a"; exit 1; }
             cd ..
           done
