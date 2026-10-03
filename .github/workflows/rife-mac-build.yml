@@ -8,6 +8,9 @@
 # The maintained fork runs all of them, but its own macOS build declares macOS
 # 13.7 as minimum. Same source (MIT), same steps as its workflow, plus a
 # deployment target of 11.0 - the oldest macOS this interpolator ever supported.
+#
+# Re-running it (any push touching this file) rebuilds and retests everything; the
+# published release is left untouched.
 
 name: RIFE interpolator (macOS)
 

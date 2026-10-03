@@ -13,6 +13,9 @@
 #
 # Everything a failed step needs to say is written as an annotation (::error::), which
 # can be read on the run page without downloading logs.
+#
+# Re-running it (any push touching this file) rebuilds and retests everything; the
+# published release is left untouched.
 
 name: Beat Maker analyzer
 

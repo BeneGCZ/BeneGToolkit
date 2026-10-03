@@ -115,6 +115,13 @@ jobs:
           EOF
           osascript -l JavaScript put.js > /dev/null 2> put.err || echo "::warning::putting the file URL said: $(cat put.err | tr '\n' ' ')"
           got=$(osascript -l JavaScript get.js 2>&1 | tr '\n' ' ' | sed 's/ *$//')
+          # a freshly booted runner's pasteboard can miss the very first write (seen once on
+          # the Intel runner, the next run passed every check) - write and read once more
+          if [ "$got" != "/tmp/bg_clip.png" ]; then
+            echo "::notice::first read gave '$got' - writing and reading once more after 2 s"
+            sleep 2; osascript -l JavaScript put.js > /dev/null 2>&1
+            got=$(osascript -l JavaScript get.js 2>&1 | tr '\n' ' ' | sed 's/ *$//')
+          fi
           if [ "$got" = "/tmp/bg_clip.png" ]; then echo "::notice::Finder-style file URL read back through NSPasteboard: $got"; else echo "::error::file on clipboard (NSPasteboard): got '$got'"; ok=0; fi
           old=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1 | tr '\n' ' ' | sed 's/ *$//')
           echo "::notice::the AppleScript fallback on the same clipboard: '$old'"
