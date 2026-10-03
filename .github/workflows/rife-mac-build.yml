@@ -1,0 +1,191 @@
+# Builds the frame interpolator the panel runs on macOS (rife-ncnn-vulkan) from
+# source, as a universal binary for macOS 11 and newer, tests it with the panel's
+# own RIFE models on real Macs, and publishes it as a PRE-RELEASE (never offered as
+# a panel update - see beatmaker-build.yml for why a pre-release is safe here).
+#
+# Why: the 2022 build the panel used cannot run any of the models it downloads
+# ("layer MemoryData not exists or registered", MEASURED 2026-10-03 on all nine).
+# The maintained fork runs all of them, but its own macOS build declares macOS
+# 13.7 as minimum. Same source (MIT), same steps as its workflow, plus a
+# deployment target of 11.0 - the oldest macOS this interpolator ever supported.
+
+name: RIFE interpolator (macOS)
+
+on:
+  push:
+    branches: [beatmaker-build]
+    paths:
+      - ".github/workflows/rife-mac-build.yml"
+      - ".github/rife/ci_rife_check.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rife-mac-build
+  cancel-in-progress: false
+
+env:
+  RIFE_REPO: TNTwise/rife-ncnn-vulkan
+  RIFE_COMMIT: 5eea93c6e7079dda69d7a0ce9c1106ff5e641143      # tag 20250112
+  RIFE_VERSION: "20250112"
+  BUILD_TAG: rife-ncnn-vulkan-20250112-mac11
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+  MODELS_URL: https://raw.githubusercontent.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan/master/models
+
+jobs:
+  openmp:
+    runs-on: macos-14
+    steps:
+      - name: Build OpenMP 11 (static, universal, macOS 11)
+        run: |
+          curl -fsSL -o openmp.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/openmp-11.0.0.src.tar.xz
+          tar -xf openmp.tar.xz
+          cd openmp-11.0.0.src
+          sed -i '' -e '/.size __kmp_unnamed_critical_addr/d' runtime/src/z_Linux_asm.S
+          sed -i '' -e 's/__kmp_unnamed_critical_addr/___kmp_unnamed_critical_addr/g' runtime/src/z_Linux_asm.S
+          for a in x86_64 arm64; do
+            mkdir build-$a && cd build-$a
+            cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES=$a \
+                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET \
+                  -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF .. > /dev/null
+            cmake --build . -j 3 > /dev/null && cmake --build . --target install > /dev/null
+            cd ..
+          done
+          mkdir -p $GITHUB_WORKSPACE/omp/lib
+          cp -r build-arm64/install/include $GITHUB_WORKSPACE/omp/
+          lipo -create build-x86_64/install/lib/libomp.a build-arm64/install/lib/libomp.a -o $GITHUB_WORKSPACE/omp/lib/libomp.a
+          lipo -info $GITHUB_WORKSPACE/omp/lib/libomp.a
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omp
+          path: omp
+
+  build:
+    needs: openmp
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.RIFE_REPO }}
+          ref: ${{ env.RIFE_COMMIT }}
+          submodules: recursive
+          path: rife-src
+      - uses: actions/download-artifact@v4
+        with:
+          name: omp
+          path: omp
+      - name: Vulkan SDK 1.2.162 (MoltenVK static) - the one the fork's own build uses
+        run: |
+          curl -fsSL -o vk.dmg https://github.com/TNTwise/Rife-Vulkan-Models/releases/download/1/vulkansdk-macos-1.2.162.0.dmg
+          shasum -a 256 vk.dmg
+          hdiutil attach vk.dmg -quiet
+          cp -r /Volumes/vulkansdk-macos-1.2.162.0 vk
+          hdiutil detach /Volumes/vulkansdk-macos-1.2.162.0 -quiet
+          ls vk/MoltenVK/MoltenVK.xcframework
+      - name: Build x86_64 and arm64 for macOS 11
+        run: |
+          OMP="$PWD/omp"
+          export VULKAN_SDK="$PWD/vk/macOS"
+          for a in x86_64 arm64; do
+            EXTRA=""
+            [ "$a" = "x86_64" ] && EXTRA="-DCMAKE_CROSSCOMPILING=ON -DCMAKE_SYSTEM_PROCESSOR=x86_64"
+            mkdir build-$a && cd build-$a
+            cmake -DCMAKE_BUILD_TYPE=Release -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES=$a \
+                  -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET $EXTRA \
+                  -DOpenMP_C_FLAGS="-Xclang -fopenmp -I$OMP/include" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp -I$OMP/include" \
+                  -DOpenMP_C_LIB_NAMES=libomp -DOpenMP_CXX_LIB_NAMES=libomp -DOpenMP_libomp_LIBRARY="$OMP/lib/libomp.a" \
+                  -DVulkan_INCLUDE_DIR="$PWD/../vk/MoltenVK/include" \
+                  -DVulkan_LIBRARY="$PWD/../vk/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a" \
+                  ../rife-src/src > /dev/null || { echo "::error::cmake failed for $a"; exit 1; }
+            cmake --build . -j 3 2>&1 | tail -5
+            [ -f rife-ncnn-vulkan ] || { echo "::error::no binary for $a"; exit 1; }
+            cd ..
+          done
+      - name: Package, sign, check
+        run: |
+          mkdir pkg
+          lipo -create build-x86_64/rife-ncnn-vulkan build-arm64/rife-ncnn-vulkan -o pkg/rife-ncnn-vulkan
+          strip pkg/rife-ncnn-vulkan
+          codesign --force --sign - pkg/rife-ncnn-vulkan
+          codesign --verify --strict pkg/rife-ncnn-vulkan || { echo "::error::signature does not verify"; exit 1; }
+          lipo -info pkg/rife-ncnn-vulkan
+          for a in x86_64 arm64; do
+            m=$(otool -arch $a -l pkg/rife-ncnn-vulkan | awk '/ minos /{print $2; exit}')
+            echo "::notice::$a slice declares macOS $m"
+            [ "$m" = "11.0" ] || { echo "::error::$a slice declares macOS $m, not 11.0"; exit 1; }
+          done
+          otool -L pkg/rife-ncnn-vulkan
+          cp rife-src/LICENSE pkg/LICENSE.txt
+          printf 'rife-ncnn-vulkan %s, built for BeneG Toolkit (universal, macOS 11+).\nSource: https://github.com/%s at %s (MIT, licence beside this file).\nUses ncnn (BSD-3-Clause) and MoltenVK (Apache-2.0).\nThe panel downloads and runs this itself.\n' \
+            "$RIFE_VERSION" "$RIFE_REPO" "$RIFE_COMMIT" > pkg/README.txt
+          cd pkg && zip -X -q "../$BUILD_TAG-macos-universal.zip" * && cd ..
+          shasum -a 256 "$BUILD_TAG-macos-universal.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rife-mac
+          path: rife-ncnn-vulkan-*-macos-universal.zip
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rife-mac
+          path: dist
+      - name: Unpack as the panel does, fetch three of the panel's models
+        run: |
+          echo "macOS $(sw_vers -productVersion), $(uname -m)"
+          mkdir rife && cd rife && unzip -q ../dist/*.zip && chmod 755 rife-ncnn-vulkan && cd ..
+          ./rife/rife-ncnn-vulkan -l 2>&1 | head -8 || true
+          for m in "rife-v4.14-ensemble:rife-v4.14_ensembleTrue" "rife-v4.26:rife-v4.26_ensembleFalse" "rife-v4.6:rife-v4.6_ensembleFalse"; do
+            d=${m%%:*}; up=${m##*:}; mkdir -p "models/$d"
+            curl -fsSL -o "models/$d/flownet.param" "$MODELS_URL/$up/flownet.param"
+            curl -fsSL -o "models/$d/flownet.bin" "$MODELS_URL/$up/flownet.bin"
+          done
+          python3 .github/rife/ci_rife_check.py make frames
+      - name: Interpolate on the GPU (Metal through MoltenVK)
+        continue-on-error: true
+        run: |
+          ok=1
+          for d in rife-v4.14-ensemble rife-v4.26 rife-v4.6; do
+            python3 .github/rife/ci_rife_check.py check "$PWD/rife/rife-ncnn-vulkan" "$PWD/models/$d" frames --gpu 0 || ok=0
+          done
+          [ $ok = 1 ]
+      - name: Intel half through Rosetta (Apple Silicon only)
+        if: matrix.os == 'macos-14'
+        continue-on-error: true
+        run: python3 .github/rife/ci_rife_check.py check "$PWD/rife/rife-ncnn-vulkan" "$PWD/models/rife-v4.14-ensemble" frames --gpu 0 --arch x86_64
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: rife-mac
+          path: dist
+      - name: Publish the pre-release (once - never overwritten)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          while read -r h f; do echo "::notice::sha256 $f $h"; done < SHA256SUMS.txt
+          if gh release view "$BUILD_TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::warning::$BUILD_TAG already exists - left untouched"; exit 0
+          fi
+          printf 'The frame interpolator the BeneG Toolkit panel downloads on macOS. Not a panel update.\n\nrife-ncnn-vulkan %s (MIT), built from source as a universal binary for macOS 11+.\n' "$RIFE_VERSION" > notes.md
+          gh release create "$BUILD_TAG" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "RIFE interpolator for macOS ($RIFE_VERSION)" --notes-file notes.md *.zip SHA256SUMS.txt
+          echo "::notice::published $BUILD_TAG"
