@@ -1,0 +1,182 @@
+# The panel's macOS features, run for real on GitHub's Macs with the panel's own
+# commands - the same download URLs and pins as js/deps.js, the same uv install
+# arguments as captions.js / vocals.js / facetrack.js, the same osascript calls as
+# clipboard.js. After Effects is not on a runner, so this proves the tools install
+# and do their job on macOS, not the panel UI around them.
+#
+#   tools  (Apple Silicon + Intel)  uv, Deno, yt-dlp, ffmpeg/ffprobe; a download
+#                                   recoded to H.264; the face tracker's Python;
+#                                   the clipboard: a file copied in Finder, an image
+#   ai     (Apple Silicon)          captions (WhisperX) and the vocal remover
+#                                   (audio-separator) installed and run
+#
+# Every check writes an annotation (::notice:: / ::error::), readable on the run
+# page without downloading logs.
+
+name: macOS features
+
+on:
+  push:
+    branches: [beatmaker-build]
+    paths: [".github/workflows/mac-features.yml"]
+  workflow_dispatch:
+
+env:
+  UV_VER: "0.12.13"
+  DENO_VER: "2.8.3"
+
+jobs:
+  tools:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - name: Machine
+        run: |
+          echo "::notice::${{ matrix.os }} - macOS $(sw_vers -productVersion), $(uname -m)"
+
+      - name: Tools from the panel's own sources
+        run: |
+          set -e
+          A=$(uname -m); mkdir -p bin
+          if [ "$A" = "arm64" ]; then UVA=aarch64; DNA=aarch64; FFA=arm64; else UVA=x86_64; DNA=x86_64; FFA=x64; fi
+          curl -fsSL -o uv.tgz "https://github.com/astral-sh/uv/releases/download/$UV_VER/uv-$UVA-apple-darwin.tar.gz"
+          tar -xzf uv.tgz && cp uv-$UVA-apple-darwin/uv bin/
+          curl -fsSL -o deno.zip "https://github.com/denoland/deno/releases/download/v$DENO_VER/deno-$DNA-apple-darwin.zip"
+          unzip -q -o deno.zip -d bin
+          curl -fsSL -o bin/yt-dlp "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
+          curl -fsSL -o bin/ffmpeg "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-darwin-$FFA"
+          curl -fsSL -o bin/ffprobe "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffprobe-darwin-$FFA"
+          chmod 755 bin/*
+          for t in uv deno yt-dlp; do echo "::notice::$t $(bin/$t --version 2>&1 | head -1)"; done
+          echo "::notice::ffmpeg $(bin/ffmpeg -version | head -1 | cut -c1-60)"
+
+      - name: Downloader - a video served locally, recoded to H.264 (the panel's mp4 path)
+        run: |
+          B=$PWD/bin
+          mkdir -p srv && $B/ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=640x360:rate=30 -f lavfi -i sine=frequency=440 -t 4 -c:v libvpx-vp9 -c:a libopus srv/clip.webm
+          (cd srv && python3 -m http.server 8765 > /dev/null 2>&1 &) ; sleep 2
+          $B/yt-dlp --no-warnings --js-runtimes "deno:$B/deno" --ffmpeg-location "$B/ffmpeg" --recode-video mp4 \
+                    -o "dl/%(title).80s [%(id).20s]/%(title).80s.%(ext)s" "http://127.0.0.1:8765/clip.webm" > dl.log 2>&1 || true
+          f=$(find dl -name "*.mp4" | head -1)
+          if [ -n "$f" ] && $B/ffprobe -v error -show_entries stream=codec_name -of csv=p=0 "$f" | grep -q h264; then
+            echo "::notice::download + recode OK: $($B/ffprobe -v error -show_entries stream=codec_name,width,height -of csv=p=0 "$f" | tr '\n' ' ')"
+          else
+            echo "::error::download/recode failed: $(tail -8 dl.log | tr '\n' '|')"; exit 1
+          fi
+
+      - name: Downloader - YouTube (informative; GitHub's addresses are often asked to sign in)
+        continue-on-error: true
+        run: |
+          B=$PWD/bin
+          $B/yt-dlp --no-warnings --no-playlist --js-runtimes "deno:$B/deno" --ffmpeg-location "$B/ffmpeg" \
+                    -f "bv*[height<=360]+ba/b[height<=360]" --recode-video mp4 -o "yt/%(title).80s.%(ext)s" \
+                    "https://www.youtube.com/watch?v=jNQXAC9IVRw" > yt.log 2>&1 || true
+          if ls yt/*.mp4 > /dev/null 2>&1; then echo "::notice::YouTube download OK"; else echo "::warning::YouTube: $(grep -m1 -i error yt.log | cut -c1-200)"; exit 1; fi
+
+      - name: Face tracker - the panel's own Python environment
+        run: |
+          B=$PWD/bin
+          export UV_PYTHON_INSTALL_DIR=$PWD/py UV_CACHE_DIR=$PWD/uvcache
+          $B/uv venv --clear --python 3.12 ftvenv > ft.log 2>&1
+          $B/uv pip install --python ftvenv/bin/python --no-deps "mediapipe==0.10.21" >> ft.log 2>&1
+          $B/uv pip install --python ftvenv/bin/python absl-py "attrs>=19.1.0" "flatbuffers>=2.0" matplotlib "numpy<2" opencv-python "protobuf<5,>=4.25.3" "sounddevice>=0.4.4" sentencepiece >> ft.log 2>&1 \
+            || { echo "::error::face tracker install: $(tail -6 ft.log | tr '\n' '|')"; exit 1; }
+          ftvenv/bin/python -c "import mediapipe as mp, cv2; from mediapipe.tasks.python import vision; print(mp.__version__, cv2.__version__)" > ftv.txt 2>&1 \
+            && echo "::notice::face tracker libraries load: mediapipe/opencv $(cat ftv.txt)" \
+            || { echo "::error::face tracker import: $(tail -4 ftv.txt | tr '\n' '|')"; exit 1; }
+
+      - name: Clipboard - a file copied in Finder, and an image (clipboard.js commands)
+        run: |
+          python3 - <<'EOF'
+          import struct, zlib
+          raw = b""
+          for y in range(48):
+              row = bytearray([0])
+              for x in range(64):
+                  row += bytes([x * 4 % 256, y * 4 % 256, 128])
+              raw += bytes(row)
+          def ch(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+          open("/tmp/bg_clip.png", "wb").write(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", 64, 48, 8, 2, 0, 0, 0)) + ch(b"IDAT", zlib.compress(raw)) + ch(b"IEND", b""))
+          EOF
+          ok=1
+          # 1. a file, as Finder puts it there
+          osascript -e 'set the clipboard to (POSIX file "/tmp/bg_clip.png")'
+          got=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1)
+          if [ "$got" = "/tmp/bg_clip.png" ]; then echo "::notice::Finder file on the clipboard read back: $got"; else echo "::error::file on clipboard: got '$got'"; ok=0; fi
+          # 2. an image (PNG), written out by the same four lines macPaste uses
+          osascript -e 'set the clipboard to (read (POSIX file "/tmp/bg_clip.png") as «class PNGf»)'
+          rm -f /tmp/bg_out.png
+          osascript -e 'set d to (the clipboard as «class PNGf»)' -e 'set f to open for access POSIX file "/tmp/bg_out.png" with write permission' -e 'write d to f' -e 'close access f' 2> clip.log
+          if cmp -s /tmp/bg_clip.png /tmp/bg_out.png; then echo "::notice::PNG on the clipboard written out byte for byte"; \
+          elif [ -s /tmp/bg_out.png ]; then echo "::notice::PNG on the clipboard written out ($(wc -c < /tmp/bg_out.png) bytes, re-encoded)"; \
+          else echo "::error::image from clipboard: $(cat clip.log)"; ok=0; fi
+          # 3. with an image only, the file route must say no (so it falls through to the image)
+          if osascript -e 'POSIX path of (the clipboard as «class furl»)' > /dev/null 2>&1; then echo "::warning::furl answered for an image-only clipboard"; else echo "::notice::image-only clipboard: file route correctly says no"; fi
+          [ $ok = 1 ]
+
+  ai:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      UV_TOOL_DIR: ${{ github.workspace }}/tools
+      UV_TOOL_BIN_DIR: ${{ github.workspace }}/tools/bin
+      UV_PYTHON_INSTALL_DIR: ${{ github.workspace }}/python
+      UV_CACHE_DIR: ${{ github.workspace }}/uv-cache
+      HF_HOME: ${{ github.workspace }}/models
+      TORCH_HOME: ${{ github.workspace }}/torch
+    steps:
+      - name: uv and ffmpeg (as the panel fetches them)
+        run: |
+          mkdir -p bin
+          curl -fsSL -o uv.tgz "https://github.com/astral-sh/uv/releases/download/$UV_VER/uv-aarch64-apple-darwin.tar.gz"
+          tar -xzf uv.tgz && cp uv-aarch64-apple-darwin/uv bin/
+          curl -fsSL -o bin/ffmpeg "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-darwin-arm64"
+          chmod 755 bin/*
+          echo "$PWD/bin" >> $GITHUB_PATH
+          say -o speech.aiff "Hello. This is a test of the captions in the panel. The quick brown fox jumps over the lazy dog."
+          afconvert -f WAVE -d LEI16@16000 speech.aiff speech.wav
+
+      - name: Captions - install WhisperX exactly as captions.js does (Processor build)
+        run: |
+          start=$(date +%s)
+          uv tool install --python 3.12 --torch-backend cpu "whisperx>=3.8,<4" > cap-install.log 2>&1 \
+            || { echo "::error::whisperx install: $(tail -6 cap-install.log | tr '\n' '|')"; exit 1; }
+          echo "::notice::whisperx installed in $(( $(date +%s) - start )) s: $(grep -m1 -o 'whisperx==[^ ]*' cap-install.log)  $(grep -m1 -o 'torch==[^ ]*' cap-install.log)"
+
+      - name: Captions - transcribe speech made by macOS (tiny model, word alignment on)
+        run: |
+          mkdir out
+          tools/bin/whisperx speech.wav --model tiny --output_dir out --output_format json --device cpu --compute_type float32 --language en > cap-run.log 2>&1 \
+            || { echo "::error::whisperx run: $(tail -6 cap-run.log | tr '\n' '|')"; exit 1; }
+          python3 - <<'EOF'
+          import json, glob
+          d = json.load(open(glob.glob("out/*.json")[0]))
+          text = " ".join(s["text"] for s in d["segments"]).strip()
+          words = sum(len(s.get("words", [])) for s in d["segments"])
+          print("::notice::transcript: %s (%d timed words)" % (text[:120], words))
+          ok = "test" in text.lower() and "fox" in text.lower() and words > 5
+          if not ok: print("::error::transcript does not match the spoken text")
+          raise SystemExit(0 if ok else 1)
+          EOF
+
+      - name: Vocal remover - install as vocals.js does (Processor build)
+        run: |
+          uv tool install --force --python 3.12 --torch-backend cpu --with "torch==2.8.0" --with audioread --with onnxruntime "audio-separator[cpu]>=0.44,<1" > voc-install.log 2>&1 \
+            || { echo "::error::audio-separator install: $(tail -6 voc-install.log | tr '\n' '|')"; exit 1; }
+          echo "::notice::audio-separator installed: $(grep -m1 -o 'audio-separator==[^ ]*' voc-install.log)"
+
+      - name: Vocal remover - separate speech from music (the panel's model)
+        run: |
+          ffmpeg -hide_banner -loglevel error -i speech.wav -f lavfi -i "sine=frequency=110:duration=8" -f lavfi -i "sine=frequency=220:duration=8" \
+                 -filter_complex "[0:a]apad,atrim=0:8[v];[1:a][2:a]amix=inputs=2[m];[v][m]amix=inputs=2:normalize=0" -ar 44100 -ac 2 mix.wav
+          mkdir -p sep sepmodels
+          tools/bin/audio-separator mix.wav --model_filename vocals_mel_band_roformer.ckpt --model_file_dir sepmodels --output_dir sep --output_format WAV > voc-run.log 2>&1 \
+            || { echo "::error::audio-separator run: $(tail -6 voc-run.log | tr '\n' '|')"; exit 1; }
+          ls sep
+          n=$(ls sep/*.wav 2>/dev/null | wc -l | tr -d ' ')
+          [ "$n" -ge 2 ] && echo "::notice::vocal remover produced $n stems: $(ls sep | tr '\n' ' ')" || { echo "::error::no stems: $(tail -4 voc-run.log | tr '\n' '|')"; exit 1; }
+          grep -m1 -i "available in Torch\|No hardware acceleration" voc-run.log | sed 's/^/::notice::device: /' || true
