@@ -104,9 +104,11 @@ jobs:
           open("/tmp/bg_clip.png", "wb").write(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", 64, 48, 8, 2, 0, 0, 0)) + ch(b"IDAT", zlib.compress(raw)) + ch(b"IEND", b""))
           EOF
           ok=1
+          ls -la /tmp/bg_clip.png || echo "::error::test PNG was not written"
           # 1. a file, as Finder puts it there
-          osascript -e 'set the clipboard to (POSIX file "/tmp/bg_clip.png")'
-          got=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1)
+          set_out=$(osascript -e 'set the clipboard to (POSIX file "/tmp/bg_clip.png")' 2>&1 | tr '\n' ' ')
+          [ -n "$set_out" ] && echo "::warning::setting the clipboard said: $set_out"
+          got=$(osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>&1 | tr '\n' ' ' | sed 's/ *$//')
           if [ "$got" = "/tmp/bg_clip.png" ]; then echo "::notice::Finder file on the clipboard read back: $got"; else echo "::error::file on clipboard: got '$got'"; ok=0; fi
           # 2. an image (PNG), written out by the same four lines macPaste uses
           osascript -e 'set the clipboard to (read (POSIX file "/tmp/bg_clip.png") as «class PNGf»)'
@@ -120,6 +122,8 @@ jobs:
           [ $ok = 1 ]
 
   ai:
+    # "[tools-only]" in the commit message skips this hour-long job
+    if: ${{ !contains(github.event.head_commit.message, '[tools-only]') }}
     runs-on: macos-14
     timeout-minutes: 60
     env:
