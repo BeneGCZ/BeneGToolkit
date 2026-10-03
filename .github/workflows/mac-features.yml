@@ -58,7 +58,8 @@ jobs:
         run: |
           B=$PWD/bin
           mkdir -p srv && $B/ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=640x360:rate=30 -f lavfi -i sine=frequency=440 -t 4 -c:v libvpx-vp9 -c:a libopus srv/clip.webm
-          (cd srv && python3 -m http.server 8765 > /dev/null 2>&1 &) ; sleep 2
+          nohup python3 -m http.server 8765 --bind 127.0.0.1 --directory srv > srv.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8765/clip.webm && break; sleep 1; done
           $B/yt-dlp --no-warnings --js-runtimes "deno:$B/deno" --ffmpeg-location "$B/ffmpeg" --recode-video mp4 \
                     -o "dl/%(title).80s [%(id).20s]/%(title).80s.%(ext)s" "http://127.0.0.1:8765/clip.webm" > dl.log 2>&1 || true
           f=$(find dl -name "*.mp4" | head -1)
@@ -174,9 +175,24 @@ jobs:
           ffmpeg -hide_banner -loglevel error -i speech.wav -f lavfi -i "sine=frequency=110:duration=8" -f lavfi -i "sine=frequency=220:duration=8" \
                  -filter_complex "[0:a]apad,atrim=0:8[v];[1:a][2:a]amix=inputs=2[m];[v][m]amix=inputs=2:normalize=0" -ar 44100 -ac 2 mix.wav
           mkdir -p sep sepmodels
-          tools/bin/audio-separator mix.wav --model_filename vocals_mel_band_roformer.ckpt --model_file_dir sepmodels --output_dir sep --output_format WAV > voc-run.log 2>&1 \
-            || { echo "::error::audio-separator run: $(tail -6 voc-run.log | tr '\n' '|')"; exit 1; }
-          ls sep
+          if tools/bin/audio-separator mix.wav --model_filename vocals_mel_band_roformer.ckpt --model_file_dir sepmodels --output_dir sep --output_format WAV > voc-run.log 2>&1; then
+            echo "::notice::vocal remover on the GPU (MPS): $(ls sep | tr '\n' ' ')"
+          else
+            echo "::warning::GPU (MPS) run failed: $(grep -m1 -i 'error\|memory' voc-run.log | cut -c1-200)"
+            # the panel's fallback: the same tool through its own Python, with MPS hidden
+            PY="$(dirname "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' tools/bin/audio-separator)")/python"
+            "$PY" -c "import sys, torch; torch.backends.mps.is_available = lambda: False; from audio_separator.utils.cli import main; sys.argv = ['audio-separator'] + sys.argv[1:]; main()" \
+                mix.wav --model_filename vocals_mel_band_roformer.ckpt --model_file_dir sepmodels --output_dir sep --output_format WAV > voc-cpu.log 2>&1 \
+              || { echo "::error::CPU fallback failed too: $(tail -6 voc-cpu.log | tr '\n' '|')"; exit 1; }
+            grep -m1 -i "available in Torch\|No hardware acceleration" voc-cpu.log | sed 's/^/::notice::fallback device: /' || true
+          fi
           n=$(ls sep/*.wav 2>/dev/null | wc -l | tr -d ' ')
-          [ "$n" -ge 2 ] && echo "::notice::vocal remover produced $n stems: $(ls sep | tr '\n' ' ')" || { echo "::error::no stems: $(tail -4 voc-run.log | tr '\n' '|')"; exit 1; }
-          grep -m1 -i "available in Torch\|No hardware acceleration" voc-run.log | sed 's/^/::notice::device: /' || true
+          [ "$n" -ge 2 ] && echo "::notice::vocal remover produced $n stems: $(ls sep | tr '\n' ' ')" || { echo "::error::no stems"; exit 1; }
+
+      - name: Beat Maker drum split (htdemucs, shares the separator) - informative
+        continue-on-error: true
+        run: |
+          mkdir -p stems
+          tools/bin/audio-separator mix.wav --model_filename htdemucs.yaml --single_stem Drums --model_file_dir sepmodels --output_dir stems --output_format WAV > dm.log 2>&1 \
+            && echo "::notice::htdemucs drum split OK: $(ls stems | tr '\n' ' ')" \
+            || { echo "::warning::htdemucs on MPS: $(grep -m1 -i 'error\|memory' dm.log | cut -c1-200)"; exit 1; }
